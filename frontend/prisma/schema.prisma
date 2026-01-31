@@ -11,13 +11,68 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User model - synced with Clerk
+// User model - synced with Clerk + Worker Profile
 model User {
   id        String   @id @default(cuid())
   clerkId   String   @unique
   email     String   @unique
   name      String?
   imageUrl  String?
+  
+  // Worker profile fields
+  age              Int?
+  gender           String?   // "male", "female", "other"
+  yearsExperience  Int?      @default(0)
+  jobTitle         String?
+  department       String?
+  
+  // Relationships
+  dailyForms       DailyForm[]
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Daily Safety Form submission
+model DailyForm {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Form date and shift info
+  date              DateTime  @db.Date
+  shiftDuration     Float     // hours worked
+  
+  // Physical condition
+  fatigueLevel      Int       // 1-10 scale
+  
+  // PPE compliance
+  ppeItemsRequired  Int       @default(6)
+  ppeItemsUsed      Int       @default(0)
+  ppeComplianceRate Float     // 0.0 to 1.0
+  ppeDetails        Json?     // array of PPE items used
+  
+  // Hazard exposure
+  hazardExposures          Json      // { "noise": 2, "dust": 1, ... } hours per hazard
+  totalHazardExposureHours Float     @default(0)
+  
+  // Symptoms
+  symptoms          Json?     // array of symptoms
+  
+  // Incident reporting
+  incidentReported     Boolean   @default(false)
+  incidentDescription  String?
+  
+  // Calculated daily risk score (rule-based)
+  ruleBasedScore    Float     @default(0)
+  
+  // Additional notes
+  notes             String?
+  
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
 }

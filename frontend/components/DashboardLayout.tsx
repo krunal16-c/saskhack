@@ -49,6 +49,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       { name: "Dashboard", href: "/worker", icon: LayoutDashboard },
       { name: "Daily Form", href: "/worker/form", icon: ClipboardList },
       { name: "My Alerts", href: "/worker/alerts", icon: Bell },
+      { name: "My Profile", href: "/worker/profile", icon: Users },
+      { name: "Admin Dashboard", href: "/admin", icon: BarChart3 },
     ],
     manager: [
       { name: "Dashboard", href: "/manager", icon: LayoutDashboard },

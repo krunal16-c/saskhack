@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -17,6 +17,7 @@ import {
   Calendar,
   CheckCircle,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 
 interface RiskScore {
@@ -29,6 +30,7 @@ interface DailyForm {
   id: string;
   date: string;
   submitted_at: string;
+  risk_score: number;
 }
 
 interface Alert {
@@ -40,30 +42,46 @@ interface Alert {
   created_at: string;
 }
 
+interface DashboardData {
+  latestRisk: RiskScore;
+  recentForms: DailyForm[];
+  alerts: Alert[];
+  todayFormSubmitted: boolean;
+  consecutiveSafeDays: number;
+  stats: {
+    formsThisWeek: number;
+    avgRisk7d: number;
+    incidentsLast90d: number;
+  };
+}
+
 export default function WorkerDashboard() {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [latestRisk, setLatestRisk] = useState<RiskScore | null>({
-    total_score: 35,
-    risk_level: "medium",
-    date: new Date().toISOString(),
-  });
-  const [recentForms, setRecentForms] = useState<DailyForm[]>([
-    { id: "1", date: new Date().toISOString(), submitted_at: new Date().toISOString() },
-    { id: "2", date: new Date(Date.now() - 86400000).toISOString(), submitted_at: new Date(Date.now() - 86400000).toISOString() },
-  ]);
-  const [alerts, setAlerts] = useState<Alert[]>([
-    {
-      id: "1",
-      title: "High Noise Exposure",
-      message: "Your noise exposure levels have been elevated this week.",
-      severity: "medium",
-      is_read: false,
-      created_at: new Date().toISOString(),
-    },
-  ]);
-  const [todayFormSubmitted, setTodayFormSubmitted] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchDashboard = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
+    
+    try {
+      const response = await fetch("/api/dashboard");
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
   if (authLoading || loading) {
     return (
@@ -74,6 +92,13 @@ export default function WorkerDashboard() {
       </DashboardLayout>
     );
   }
+
+  const latestRisk = dashboardData?.latestRisk ?? { total_score: 0, risk_level: "low" as RiskLevel, date: new Date().toISOString() };
+  const recentForms = dashboardData?.recentForms ?? [];
+  const alerts = dashboardData?.alerts ?? [];
+  const todayFormSubmitted = dashboardData?.todayFormSubmitted ?? false;
+  const consecutiveSafeDays = dashboardData?.consecutiveSafeDays ?? 0;
+  const stats = dashboardData?.stats ?? { formsThisWeek: 0, avgRisk7d: 0, incidentsLast90d: 0 };
 
   const unreadAlerts = alerts.filter((a) => !a.is_read).length;
   const now = new Date();
@@ -93,25 +118,37 @@ export default function WorkerDashboard() {
             </p>
           </div>
 
-          {!todayFormSubmitted ? (
-            <Button onClick={() => router.push("/worker/form")} size="lg" className="gap-2">
-              <ClipboardList className="h-5 w-5" />
-              Submit Daily Form
-              <ArrowRight className="h-4 w-4" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => fetchDashboard(true)}
+              disabled={refreshing}
+              title="Refresh dashboard"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
-          ) : (
-            <div className="flex items-center gap-2 text-emerald-600 bg-emerald-500/10 px-4 py-2 rounded-lg">
-              <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">Today&apos;s form submitted</span>
-            </div>
-          )}
+
+            {!todayFormSubmitted ? (
+              <Button onClick={() => router.push("/worker/form")} size="lg" className="gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Submit Daily Form
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 text-emerald-600 bg-emerald-500/10 px-4 py-2 rounded-lg">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">Today&apos;s form submitted</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Risk status card */}
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-center gap-8">
-              <RiskScoreGauge score={latestRisk?.total_score ?? 0} size="lg" />
+              <RiskScoreGauge score={latestRisk.total_score} size="lg" />
 
               <div className="flex-1 space-y-4 text-center md:text-left">
                 <div>
@@ -123,7 +160,7 @@ export default function WorkerDashboard() {
 
                 <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                   <div className="text-center">
-                    <p className="text-2xl font-bold">{recentForms.length}</p>
+                    <p className="text-2xl font-bold">{stats.formsThisWeek}</p>
                     <p className="text-sm text-muted-foreground">Forms (7 days)</p>
                   </div>
                   <div className="text-center">
@@ -168,12 +205,10 @@ export default function WorkerDashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Current Risk Score"
-            value={latestRisk?.total_score ?? 0}
+            value={latestRisk.total_score}
             icon={Shield}
             variant={
-              !latestRisk
-                ? "default"
-                : latestRisk.total_score <= 30
+              latestRisk.total_score <= 30
                 ? "success"
                 : latestRisk.total_score <= 60
                 ? "warning"
@@ -181,10 +216,17 @@ export default function WorkerDashboard() {
             }
           />
           <StatCard
-            title="Forms This Week"
-            value={recentForms.length}
-            subtitle="out of 5 working days"
-            icon={ClipboardList}
+            title="Avg Risk (7 days)"
+            value={stats.avgRisk7d}
+            subtitle="average score"
+            icon={TrendingUp}
+            variant={
+              stats.avgRisk7d <= 30
+                ? "success"
+                : stats.avgRisk7d <= 60
+                ? "warning"
+                : "danger"
+            }
           />
           <StatCard
             title="Active Alerts"
@@ -194,8 +236,8 @@ export default function WorkerDashboard() {
           />
           <StatCard
             title="Consecutive Safe Days"
-            value={12}
-            icon={TrendingUp}
+            value={consecutiveSafeDays}
+            icon={CheckCircle}
             variant="success"
           />
         </div>
@@ -225,11 +267,22 @@ export default function WorkerDashboard() {
                             {new Date(form.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Submitted at {new Date(form.submitted_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            Risk Score: {form.risk_score} • Submitted at {new Date(form.submitted_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                           </p>
                         </div>
                       </div>
-                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      <RiskBadge
+                        level={
+                          form.risk_score <= 30
+                            ? "low"
+                            : form.risk_score <= 60
+                            ? "medium"
+                            : form.risk_score <= 80
+                            ? "high"
+                            : "critical"
+                        }
+                        size="sm"
+                      />
                     </div>
                   ))
                 ) : (
