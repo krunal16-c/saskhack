@@ -28,9 +28,34 @@ model User {
   
   // Relationships
   dailyForms       DailyForm[]
+  teamMemberships  TeamMember[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Team - admin-created groups for scoped analytics
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  members     TeamMember[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Many-to-many: users can be in multiple teams
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
 }
 
 // Daily Safety Form submission
