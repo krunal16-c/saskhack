@@ -38,6 +38,10 @@ import {
   Loader2,
   Ban,
   FileWarning,
+  MessageCircle,
+  Send,
+  User,
+  Bot,
 } from "lucide-react";
 import {
   LineChart,
@@ -161,6 +165,39 @@ export default function AdminDashboard() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [notifyLoading, setNotifyLoading] = useState<string | null>(null);
   const [notifyMessage, setNotifyMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const sendChatMessage = useCallback(async () => {
+    if (!selectedUser || !chatInput.trim() || chatLoading) return;
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    const newHistory = [...chatMessages, { role: "user" as const, content: userMessage }];
+    setChatMessages(newHistory);
+    setChatLoading(true);
+    try {
+      const response = await fetch("/api/admin/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          message: userMessage,
+          messages: chatMessages,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setChatMessages((prev) => [...prev, { role: "assistant", content: `Error: ${result.error || "Failed to get response."}` }]);
+        return;
+      }
+      setChatMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
+    } catch (err) {
+      setChatMessages((prev) => [...prev, { role: "assistant", content: "Failed to send message." }]);
+    } finally {
+      setChatLoading(false);
+    }
+  }, [selectedUser, chatInput, chatLoading, chatMessages]);
 
   const sendNotifyEmail = useCallback(async (userId: string, type: "no_form" | "high_risk") => {
     const key = `${userId}-${type}`;
@@ -838,6 +875,8 @@ export default function AdminDashboard() {
                         onClick={() => {
                           setSelectedUser(selectedUser?.id === user.id ? null : user);
                           setNotifyMessage(null);
+                          setChatMessages([]);
+                          setChatInput("");
                         }}
                       >
                         <td className="py-3 px-2">
@@ -958,6 +997,85 @@ export default function AdminDashboard() {
                   <p className="text-xs text-muted-foreground mt-2">
                     Sends an email to {selectedUser.email}
                   </p>
+                </div>
+
+                {/* Ask about this worker (OpenAI chat) */}
+                <div className="mb-6">
+                  <h5 className="font-medium mb-2 flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Ask about this worker
+                  </h5>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Questions are answered using this worker&apos;s profile and form data from the database.
+                  </p>
+                  <div className="rounded-lg border bg-background">
+                    <div className="h-48 overflow-y-auto p-3 space-y-3">
+                      {chatMessages.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-6">
+                          Ask a question about {selectedUser.name}, e.g. &quot;What is their average risk this week?&quot; or &quot;Has they reported any incidents?&quot;
+                        </p>
+                      ) : (
+                        chatMessages.map((m, i) => (
+                          <div
+                            key={i}
+                            className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            {m.role === "assistant" && (
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                                <Bot className="h-3.5 w-3.5 text-primary" />
+                              </div>
+                            )}
+                            <div
+                              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                                m.role === "user"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted"
+                              }`}
+                            >
+                              {m.content}
+                            </div>
+                            {m.role === "user" && (
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                      {chatLoading && (
+                        <div className="flex gap-2 justify-start">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                            <Bot className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <div className="rounded-lg px-3 py-2 text-sm bg-muted">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2 p-2 border-t">
+                      <Input
+                        placeholder="Ask about this worker..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            sendChatMessage();
+                          }
+                        }}
+                        disabled={chatLoading}
+                        className="flex-1"
+                      />
+                      <Button
+                        size="icon"
+                        onClick={sendChatMessage}
+                        disabled={!chatInput.trim() || chatLoading}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* User Info Grid */}
