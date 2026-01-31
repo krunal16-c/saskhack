@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -24,31 +23,12 @@ interface UserProfile {
   age: number | null;
   gender: string | null;
   yearsExperience: number | null;
-  jobType: string | null;
   jobTitle: string | null;
   department: string | null;
 }
 
-const JOB_TYPES = [
-  "SaskPower_Line_Technician",
-  "SaskPower_Meter_Reader",
-  "SaskPower_Substation_Operator",
-  "SaskEnergy_Gas_Fitter",
-  "SaskEnergy_Pipeline_Technician",
-  "SaskTel_Field_Technician",
-  "SaskTel_Network_Installer",
-  "SGI_Claims_Adjuster",
-  "SGI_Auto_Inspector",
-  "General_Field_Worker",
-  "General_Office_Worker",
-  "Maintenance_Technician",
-  "Safety_Inspector",
-  "Other",
-];
-
 export default function ProfilePage() {
   const { loading: authLoading, syncUser } = useAuth();
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -59,7 +39,6 @@ export default function ProfilePage() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [yearsExperience, setYearsExperience] = useState("");
-  const [jobType, setJobType] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [department, setDepartment] = useState("");
 
@@ -77,7 +56,6 @@ export default function ProfilePage() {
         setAge(data.user.age?.toString() || "");
         setGender(data.user.gender || "");
         setYearsExperience(data.user.yearsExperience?.toString() || "");
-        setJobType(data.user.jobType || "");
         setJobTitle(data.user.jobTitle || "");
         setDepartment(data.user.department || "");
       }
@@ -101,7 +79,6 @@ export default function ProfilePage() {
           age: age ? parseInt(age) : null,
           gender: gender || null,
           yearsExperience: yearsExperience ? parseInt(yearsExperience) : 0,
-          jobType: jobType || null,
           jobTitle: jobTitle || null,
           department: department || null,
         }),
@@ -111,7 +88,6 @@ export default function ProfilePage() {
         const data = await response.json();
         setProfile(data.user);
         setMessage({ type: "success", text: "Profile updated successfully!" });
-        // Sync user context
         await syncUser();
       } else {
         setMessage({ type: "error", text: "Failed to update profile" });
@@ -231,28 +207,9 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="jobType">Job Type (for ML model)</Label>
-              <Select value={jobType} onValueChange={setJobType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select job type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {JOB_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.replace(/_/g, " ")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                This is used for risk prediction. Select the closest match.
-              </p>
-            </div>
-
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="jobTitle">Display Job Title</Label>
+                <Label htmlFor="jobTitle">Job Title</Label>
                 <Input
                   id="jobTitle"
                   value={jobTitle}

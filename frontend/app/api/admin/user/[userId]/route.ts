@@ -38,7 +38,7 @@ export async function GET(
     const timeSeriesData = user.dailyForms.map((form) => ({
       date: new Date(form.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       fullDate: form.date.toISOString(),
-      riskScore: form.ruleBasedScore,
+      riskScore: form.riskScore,
       fatigueLevel: form.fatigueLevel,
       ppeCompliance: Math.round(form.ppeComplianceRate * 100),
       hazardHours: form.totalHazardExposureHours,

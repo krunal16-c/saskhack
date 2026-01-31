@@ -52,7 +52,7 @@ export async function GET() {
 
     const totalFormsThisWeek = formsLast7Days.length;
 
-    // Average risk scores
+    // Average risk scores (from ML model, 0-1 scale)
     const avgRiskToday =
       totalFormsToday > 0
         ? allForms
@@ -64,19 +64,19 @@ export async function GET() {
                 formDate.getDate() === today.getDate()
               );
             })
-            .reduce((sum, f) => sum + f.ruleBasedScore, 0) / totalFormsToday
+            .reduce((sum, f) => sum + f.riskScore, 0) / totalFormsToday
         : 0;
 
     const avgRiskWeek =
       formsLast7Days.length > 0
-        ? formsLast7Days.reduce((sum, f) => sum + f.ruleBasedScore, 0) / formsLast7Days.length
+        ? formsLast7Days.reduce((sum, f) => sum + f.riskScore, 0) / formsLast7Days.length
         : 0;
 
     // High risk users (avg risk > 50 in last 7 days)
     const highRiskUsers = users.filter((u) => {
       const recentForms = u.dailyForms.filter((f) => new Date(f.date) >= sevenDaysAgo);
       if (recentForms.length === 0) return false;
-      const avgRisk = recentForms.reduce((sum, f) => sum + f.ruleBasedScore, 0) / recentForms.length;
+      const avgRisk = recentForms.reduce((sum, f) => sum + f.riskScore, 0) / recentForms.length;
       return avgRisk > 50;
     }).length;
 
@@ -95,20 +95,20 @@ export async function GET() {
       });
       dailyRiskTrend.push({
         date: date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
-        avgRisk: dayForms.length > 0 ? Math.round(dayForms.reduce((sum, f) => sum + f.ruleBasedScore, 0) / dayForms.length) : 0,
+        avgRisk: dayForms.length > 0 ? Math.round(dayForms.reduce((sum, f) => sum + f.riskScore, 0) / dayForms.length) : 0,
         formCount: dayForms.length,
       });
     }
 
-    // Risk distribution
+    // Risk distribution (using 0-100 scale thresholds)
     const riskDistribution = {
-      low: allForms.filter((f) => f.ruleBasedScore <= 30).length,
-      medium: allForms.filter((f) => f.ruleBasedScore > 30 && f.ruleBasedScore <= 60).length,
-      high: allForms.filter((f) => f.ruleBasedScore > 60 && f.ruleBasedScore <= 80).length,
-      critical: allForms.filter((f) => f.ruleBasedScore > 80).length,
+      low: allForms.filter((f) => f.riskScore <= 30).length,
+      medium: allForms.filter((f) => f.riskScore > 30 && f.riskScore <= 60).length,
+      high: allForms.filter((f) => f.riskScore > 60 && f.riskScore <= 80).length,
+      critical: allForms.filter((f) => f.riskScore > 80).length,
     };
 
-    // Hazard frequency (aggregate from all forms)
+    // Hazard frequency
     const hazardFrequency: Record<string, number> = {};
     allForms.forEach((form) => {
       const hazards = form.hazardExposures as Record<string, number>;
@@ -147,12 +147,14 @@ export async function GET() {
       const recentForms = user.dailyForms.filter((f) => new Date(f.date) >= sevenDaysAgo);
       const avgRisk =
         recentForms.length > 0
-          ? Math.round(recentForms.reduce((sum, f) => sum + f.ruleBasedScore, 0) / recentForms.length)
+          ? recentForms.reduce((sum, f) => sum + f.riskScore, 0) / recentForms.length
           : 0;
       const latestForm = user.dailyForms[0];
       const hasSubmittedToday = latestForm
         ? new Date(latestForm.date).toISOString().split("T")[0] === today.toISOString().split("T")[0]
         : false;
+
+      const latestRiskScore = latestForm?.riskScore ?? 0;
 
       return {
         id: user.id,
@@ -162,21 +164,22 @@ export async function GET() {
         age: user.age,
         gender: user.gender,
         yearsExperience: user.yearsExperience,
+        jobType: user.jobType,
         jobTitle: user.jobTitle,
         department: user.department,
         formsThisWeek: recentForms.length,
-        avgRisk7d: avgRisk,
-        latestRiskScore: latestForm?.ruleBasedScore ?? 0,
+        avgRisk7d: Math.round(avgRisk),
+        latestRiskScore: Math.round(latestRiskScore),
         hasSubmittedToday,
         totalForms: user.dailyForms.length,
         incidentsReported: user.dailyForms.filter((f) => f.incidentReported).length,
         riskLevel:
-          avgRisk <= 30 ? "low" : avgRisk <= 60 ? "medium" : avgRisk <= 80 ? "high" : "critical",
+          latestRiskScore <= 30 ? "low" : latestRiskScore <= 60 ? "medium" : latestRiskScore <= 80 ? "high" : "critical",
       };
     });
 
-    // Sort users by risk
-    formattedUsers.sort((a, b) => b.avgRisk7d - a.avgRisk7d);
+    // Sort users by risk score (highest first)
+    formattedUsers.sort((a, b) => b.latestRiskScore - a.latestRiskScore);
 
     // Fatigue distribution
     const fatigueDistribution = Array.from({ length: 10 }, (_, i) => ({

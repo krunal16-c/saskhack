@@ -78,7 +78,6 @@ interface AdminDashboardData {
 
 interface UserTimeSeriesData {
   date: string;
-  fullDate: string;
   riskScore: number;
   fatigueLevel: number;
   ppeCompliance: number;
@@ -96,12 +95,6 @@ interface UserDetailData {
   user: {
     id: string;
     name: string;
-    email: string;
-    age: number | null;
-    gender: string | null;
-    yearsExperience: number | null;
-    jobTitle: string | null;
-    department: string | null;
   };
   timeSeriesData: UserTimeSeriesData[];
   availableMetrics: MetricOption[];
@@ -199,14 +192,6 @@ export default function AdminDashboard() {
     ppeComplianceTrend: [],
     fatigueDistribution: [],
   };
-
-  // Convert risk distribution to line chart format
-  const riskDistributionLine = [
-    { category: "Low (0-30)", count: charts.riskDistribution.low, color: "#22c55e" },
-    { category: "Medium (31-60)", count: charts.riskDistribution.medium, color: "#eab308" },
-    { category: "High (61-80)", count: charts.riskDistribution.high, color: "#f97316" },
-    { category: "Critical (81+)", count: charts.riskDistribution.critical, color: "#ef4444" },
-  ];
 
   return (
     <DashboardLayout>
@@ -324,236 +309,147 @@ export default function AdminDashboard() {
         {/* Charts Section - Collapsible */}
         {showOverview && (
           <div className="space-y-6 animate-in slide-in-from-top duration-300">
-            {/* Charts Row 1 - All Line Charts */}
+            {/* Charts Row 1 */}
             <div className="grid gap-6 lg:grid-cols-2">
-          {/* Daily Risk Trend */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Risk Score Trend (7 Days)
-              </CardTitle>
-              <CardDescription>Average daily risk score across all workers</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={charts.dailyRiskTrend}>
-                    <defs>
-                      <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" />
-                    <YAxis domain={[0, 100]} className="text-xs" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Legend />
-                    <Area
-                      type="monotone"
-                      dataKey="avgRisk"
-                      name="Avg Risk"
-                      stroke="hsl(var(--primary))"
-                      fill="url(#riskGradient)"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="formCount"
-                      name="Forms Submitted"
-                      stroke="#8b5cf6"
-                      strokeWidth={2}
-                      dot={{ fill: "#8b5cf6" }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+              {/* Daily Risk Trend */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Risk Score Trend (7 Days)
+                  </CardTitle>
+                  <CardDescription>Average daily risk score across all workers (0-100)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={charts.dailyRiskTrend}>
+                        <defs>
+                          <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="date" className="text-xs" />
+                        <YAxis domain={[0, 100]} className="text-xs" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                          }}
+                        />
+                        <Legend />
+                        <Area
+                          type="monotone"
+                          dataKey="avgRisk"
+                          name="Avg Risk"
+                          stroke="hsl(var(--primary))"
+                          fill="url(#riskGradient)"
+                          strokeWidth={2}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="formCount"
+                          name="Forms Submitted"
+                          stroke="#8b5cf6"
+                          strokeWidth={2}
+                          dot={{ fill: "#8b5cf6" }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* PPE Compliance Trend */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <HardHat className="h-5 w-5" />
-                PPE Compliance Trend (7 Days)
-              </CardTitle>
-              <CardDescription>Daily PPE compliance rate</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={charts.ppeComplianceTrend}>
-                    <defs>
-                      <linearGradient id="ppeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" />
-                    <YAxis domain={[0, 100]} className="text-xs" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => [`${value}%`, "Compliance"]}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="compliance"
-                      name="Compliance %"
-                      stroke="#22c55e"
-                      fill="url(#ppeGradient)"
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Charts Row 2 */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Risk Distribution Line */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Risk Distribution (30 Days)
-              </CardTitle>
-              <CardDescription>Number of form submissions by risk level</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={riskDistributionLine}>
-                    <defs>
-                      <linearGradient id="distGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="category" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      name="Forms"
-                      stroke="#f97316"
-                      fill="url(#distGradient)"
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Fatigue Distribution Line */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Fatigue Level Distribution (7 Days)
-              </CardTitle>
-              <CardDescription>Distribution of reported fatigue levels</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={charts.fatigueDistribution}>
-                    <defs>
-                      <linearGradient id="fatigueGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="level" className="text-xs" label={{ value: "Fatigue Level", position: "bottom" }} />
-                    <YAxis className="text-xs" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      name="Workers"
-                      stroke="#8b5cf6"
-                      fill="url(#fatigueGradient)"
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Hazard Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Hazard Exposure Frequency (30 Days)
-            </CardTitle>
-            <CardDescription>Most common hazards reported</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={charts.hazardData}>
-                  <defs>
-                    <linearGradient id="hazardGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="name" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="count"
-                    name="Occurrences"
-                    stroke="#ef4444"
-                    fill="url(#hazardGradient)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {/* PPE Compliance Trend */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <HardHat className="h-5 w-5" />
+                    PPE Compliance Trend (7 Days)
+                  </CardTitle>
+                  <CardDescription>Daily PPE compliance rate</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={charts.ppeComplianceTrend}>
+                        <defs>
+                          <linearGradient id="ppeGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="date" className="text-xs" />
+                        <YAxis domain={[0, 100]} className="text-xs" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                          }}
+                          formatter={(value: number) => [`${value}%`, "Compliance"]}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="compliance"
+                          name="Compliance %"
+                          stroke="#22c55e"
+                          fill="url(#ppeGradient)"
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Fatigue Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Fatigue Level Distribution (7 Days)
+                </CardTitle>
+                <CardDescription>Distribution of reported fatigue levels</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={charts.fatigueDistribution}>
+                      <defs>
+                        <linearGradient id="fatigueGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="level" className="text-xs" />
+                      <YAxis className="text-xs" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="count"
+                        name="Workers"
+                        stroke="#8b5cf6"
+                        fill="url(#fatigueGradient)"
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -565,7 +461,7 @@ export default function AdminDashboard() {
               All Workers
             </CardTitle>
             <CardDescription>
-              Click on a worker to view their detailed metrics and charts
+              Click on a worker to view their detailed metrics • Sorted by risk score (highest first)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -576,7 +472,7 @@ export default function AdminDashboard() {
                     <th className="text-left py-3 px-2 font-medium">Name</th>
                     <th className="text-left py-3 px-2 font-medium">Department</th>
                     <th className="text-center py-3 px-2 font-medium">Risk Level</th>
-                    <th className="text-center py-3 px-2 font-medium">Avg Risk (7d)</th>
+                    <th className="text-center py-3 px-2 font-medium">Risk Score</th>
                     <th className="text-center py-3 px-2 font-medium">Forms (7d)</th>
                     <th className="text-center py-3 px-2 font-medium">Today</th>
                     <th className="text-center py-3 px-2 font-medium">Incidents</th>
@@ -607,7 +503,11 @@ export default function AdminDashboard() {
                         <td className="py-3 px-2 text-center">
                           <RiskBadge level={user.riskLevel} size="sm" />
                         </td>
-                        <td className="py-3 px-2 text-center font-mono">{user.avgRisk7d}</td>
+                        <td className="py-3 px-2 text-center">
+                          <span className="font-semibold text-primary">
+                            {user.latestRiskScore}
+                          </span>
+                        </td>
                         <td className="py-3 px-2 text-center">{user.formsThisWeek}</td>
                         <td className="py-3 px-2 text-center">
                           {user.hasSubmittedToday ? (
@@ -669,6 +569,22 @@ export default function AdminDashboard() {
                     <p className="font-medium">
                       {selectedUser.yearsExperience !== null ? `${selectedUser.yearsExperience} years` : "Not set"}
                     </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Latest Risk Score</p>
+                    <p className="font-medium text-primary text-lg">{selectedUser.latestRiskScore}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Avg Risk (7d)</p>
+                    <p className="font-medium">{selectedUser.avgRisk7d}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Forms</p>
+                    <p className="font-medium">{selectedUser.totalForms}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Incidents</p>
+                    <p className="font-medium">{selectedUser.incidentsReported}</p>
                   </div>
                 </div>
 

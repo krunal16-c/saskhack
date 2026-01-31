@@ -43,14 +43,14 @@ export async function GET() {
       );
     });
 
-    // Get the latest risk score
+    // Get the latest risk score (0-100 scale from ML)
     const latestForm = recentForms[0];
-    const latestRiskScore = latestForm?.ruleBasedScore ?? 0;
+    const latestRiskScore = latestForm?.riskScore ?? 0;
 
-    // Determine risk level
+    // Determine risk level (0-100 scale)
     let riskLevel: "low" | "medium" | "high" | "critical" = "low";
-    if (latestRiskScore > 70) riskLevel = "critical";
-    else if (latestRiskScore > 50) riskLevel = "high";
+    if (latestRiskScore > 80) riskLevel = "critical";
+    else if (latestRiskScore > 60) riskLevel = "high";
     else if (latestRiskScore > 30) riskLevel = "medium";
 
     // Calculate consecutive safe days (days with risk score <= 30)
@@ -62,7 +62,7 @@ export async function GET() {
     });
 
     for (const form of allForms) {
-      if (form.ruleBasedScore <= 30) {
+      if (form.riskScore <= 30) {
         consecutiveSafeDays++;
       } else {
         break;
@@ -72,7 +72,7 @@ export async function GET() {
     // Calculate average risk over 7 days
     const avgRisk7d =
       recentForms.length > 0
-        ? recentForms.reduce((sum, f) => sum + f.ruleBasedScore, 0) / recentForms.length
+        ? recentForms.reduce((sum, f) => sum + f.riskScore, 0) / recentForms.length
         : 0;
 
     // Get incidents in last 90 days
@@ -103,12 +103,12 @@ export async function GET() {
     }
 
     // Add alert if recent average risk is elevated
-    if (avgRisk7d > 40) {
+    if (avgRisk7d > 50) {
       alerts.push({
         id: "elevated-risk",
         title: "Elevated Risk Level",
         message: `Your average risk score over the past 7 days is ${Math.round(avgRisk7d)}. Consider reviewing your safety practices.`,
-        severity: avgRisk7d > 60 ? ("critical" as const) : ("medium" as const),
+        severity: avgRisk7d > 70 ? ("critical" as const) : ("medium" as const),
         is_read: false,
         created_at: new Date().toISOString(),
       });
@@ -132,7 +132,7 @@ export async function GET() {
       id: form.id,
       date: form.date.toISOString(),
       submitted_at: form.submittedAt.toISOString(),
-      risk_score: form.ruleBasedScore,
+      risk_score: form.riskScore,
     }));
 
     return NextResponse.json({

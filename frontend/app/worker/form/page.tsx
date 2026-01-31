@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { RiskScoreGauge } from "@/components/RiskScoreGauge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,13 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   ClipboardList,
   ChevronLeft,
@@ -34,16 +26,15 @@ import {
   Calendar,
   Clock,
   Loader2,
-  Cloud,
 } from "lucide-react";
 
 const HAZARDS = [
-  { id: "noise", name: "Noise Exposure", icon: Ear, baseRisk: 15 },
-  { id: "dust", name: "Dust/Particles", icon: Wind, baseRisk: 12 },
-  { id: "chemicals", name: "Chemical Exposure", icon: AlertTriangle, baseRisk: 20 },
-  { id: "heights", name: "Working at Heights", icon: AlertTriangle, baseRisk: 25 },
-  { id: "electrical", name: "Electrical Hazards", icon: AlertTriangle, baseRisk: 22 },
-  { id: "confined", name: "Confined Spaces", icon: AlertTriangle, baseRisk: 18 },
+  { id: "noise", name: "Noise Exposure", icon: Ear },
+  { id: "dust", name: "Dust/Particles", icon: Wind },
+  { id: "chemicals", name: "Chemical Exposure", icon: AlertTriangle },
+  { id: "heights", name: "Working at Heights", icon: AlertTriangle },
+  { id: "electrical", name: "Electrical Hazards", icon: AlertTriangle },
+  { id: "confined", name: "Confined Spaces", icon: AlertTriangle },
 ];
 
 const PPE_ITEMS = [
@@ -66,18 +57,6 @@ const SYMPTOMS = [
   "Muscle Pain",
 ];
 
-const WEATHER_CONDITIONS = [
-  { value: "Clear", label: "Clear / Sunny" },
-  { value: "Cloudy", label: "Cloudy" },
-  { value: "Rain", label: "Rain" },
-  { value: "Snow", label: "Snow" },
-  { value: "Fog", label: "Fog" },
-  { value: "Extreme_Heat", label: "Extreme Heat (>30°C)" },
-  { value: "Extreme_Cold", label: "Extreme Cold (<-20°C)" },
-  { value: "Wind", label: "High Wind" },
-  { value: "Storm", label: "Storm" },
-];
-
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 
 export default function DailyFormPage() {
@@ -89,7 +68,6 @@ export default function DailyFormPage() {
   // Step 1: Date & Shift Info
   const [formDate, setFormDate] = useState(getTodayDate());
   const [shiftDuration, setShiftDuration] = useState(8);
-  const [weatherCondition, setWeatherCondition] = useState("Clear");
 
   // Step 2: Hazard Exposure
   const [selectedHazards, setSelectedHazards] = useState<string[]>([]);
@@ -115,39 +93,6 @@ export default function DailyFormPage() {
   // Calculate PPE compliance rate
   const ppeComplianceRate = PPE_ITEMS.length > 0 ? selectedPPE.length / PPE_ITEMS.length : 1;
 
-  // Calculate live risk score (0-100 for display, will be converted to 0-1 for storage)
-  const calculateRiskScore = () => {
-    let score = 0;
-
-    // Hazard exposure contribution
-    selectedHazards.forEach((hazardId) => {
-      const hazard = HAZARDS.find((h) => h.id === hazardId);
-      if (hazard) {
-        const hours = hazardHours[hazardId] || 1;
-        score += hazard.baseRisk * (hours / 8);
-      }
-    });
-
-    // PPE reduction (up to 18 points)
-    const ppeReduction = ppeComplianceRate * 18;
-    score = Math.max(0, score - ppeReduction);
-
-    // Fatigue contribution
-    score += (fatigueLevel - 1) * 5;
-
-    // Symptoms contribution
-    score += selectedSymptoms.length * 4;
-
-    // Incident adds significant risk
-    if (incidentReported) {
-      score += 20;
-    }
-
-    return Math.min(100, Math.round(score));
-  };
-
-  const riskScore = calculateRiskScore();
-
   const handleSubmit = async () => {
     setSubmitting(true);
 
@@ -162,7 +107,6 @@ export default function DailyFormPage() {
       const formData = {
         date: formDate,
         shiftDuration,
-        weatherCondition,
         fatigueLevel,
         ppeItemsRequired: PPE_ITEMS.length,
         ppeItemsUsed: selectedPPE.length,
@@ -174,50 +118,28 @@ export default function DailyFormPage() {
         notes: additionalNotes || null,
       };
 
-      // Log form data
-      console.log("=== FORM DATA JSON ===");
-      console.log(JSON.stringify(formData, null, 2));
-      console.log("======================");
-
-      // Submit form to API
-      const formResponse = await fetch("/api/forms", {
+      // Submit form to API (API calls ML model and returns risk score)
+      const response = await fetch("/api/forms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      if (!formResponse.ok) {
+      if (!response.ok) {
         throw new Error("Failed to submit form");
       }
 
-      const formResult = await formResponse.json();
+      const result = await response.json();
 
-      // Calculate features for ML model
-      const featuresResponse = await fetch("/api/forms/features", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          formData: {
-            shiftDuration,
-            weatherCondition,
-            fatigueLevel,
-            ppeComplianceRate,
-            totalHazardExposureHours,
-            ruleBasedScore: formResult.form.ruleBasedScore,
-          },
-        }),
-      });
-
-      if (!featuresResponse.ok) {
-        throw new Error("Failed to calculate features");
+      // Log the results
+      console.log("=== FORM SUBMITTED ===");
+      console.log("Form Data:", JSON.stringify(formData, null, 2));
+      console.log("ML Features:", JSON.stringify(result.features, null, 2));
+      console.log("ML Risk Score:", result.riskScore);
+      if (result.mlResponse) {
+        console.log("Full ML Response:", JSON.stringify(result.mlResponse, null, 2));
       }
-
-      const featuresResult = await featuresResponse.json();
-
-      // Print features JSON to console
-      console.log("=== ML FEATURES JSON ===");
-      console.log(JSON.stringify(featuresResult.features, null, 2));
-      console.log("========================");
+      console.log("======================");
 
       // Redirect to dashboard after successful submission
       router.push("/worker");
@@ -276,7 +198,6 @@ export default function DailyFormPage() {
               Complete your daily safety assessment
             </p>
           </div>
-          <RiskScoreGauge score={riskScore} size="sm" />
         </div>
 
         {/* Progress */}
@@ -300,11 +221,11 @@ export default function DailyFormPage() {
                 Date & Shift Information
               </CardTitle>
               <CardDescription>
-                Enter the date, duration, and conditions of your shift
+                Enter the date and duration of your shift
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="date">Form Date</Label>
                   <Input
@@ -330,25 +251,6 @@ export default function DailyFormPage() {
                     value={shiftDuration}
                     onChange={(e) => setShiftDuration(parseFloat(e.target.value) || 8)}
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="weather">
-                    <Cloud className="inline h-4 w-4 mr-1" />
-                    Weather Condition
-                  </Label>
-                  <Select value={weatherCondition} onValueChange={setWeatherCondition}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select weather" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {WEATHER_CONDITIONS.map((condition) => (
-                        <SelectItem key={condition.value} value={condition.value}>
-                          {condition.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </CardContent>
@@ -557,10 +459,6 @@ export default function DailyFormPage() {
                     <p className="font-medium">{shiftDuration} hours</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Weather</p>
-                    <p className="font-medium">{weatherCondition.replace(/_/g, " ")}</p>
-                  </div>
-                  <div>
                     <p className="text-muted-foreground">Hazards</p>
                     <p className="font-medium">{selectedHazards.length}</p>
                   </div>
@@ -577,13 +475,18 @@ export default function DailyFormPage() {
                     <p className="font-medium">{fatigueLevel}/10</p>
                   </div>
                   <div>
+                    <p className="text-muted-foreground">Symptoms</p>
+                    <p className="font-medium">{selectedSymptoms.length}</p>
+                  </div>
+                  <div>
                     <p className="text-muted-foreground">Incident</p>
                     <p className="font-medium">{incidentReported ? "Yes" : "No"}</p>
                   </div>
                 </div>
-                <div className="pt-3 border-t flex items-center justify-between">
-                  <span className="font-medium">Calculated Risk Score</span>
-                  <RiskScoreGauge score={riskScore} size="sm" showLabel={false} />
+                <div className="pt-3 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    Risk score will be calculated by our ML model after submission
+                  </p>
                 </div>
               </div>
             </CardContent>
