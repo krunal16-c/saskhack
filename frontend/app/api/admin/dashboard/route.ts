@@ -1,8 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
 
@@ -10,15 +10,34 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get all users with their forms
-    const users = await prisma.user.findMany({
-      include: {
-        dailyForms: {
-          orderBy: { date: "desc" },
-          take: 30, // Last 30 forms per user
+    const { searchParams } = new URL(request.url);
+    const teamId = searchParams.get("teamId");
+
+    // Require teamId for data; return empty when no team selected
+    if (!teamId || !teamId.trim()) {
+      return NextResponse.json({
+        teamId: null,
+        metrics: {
+          totalUsers: 0,
+          activeUsers: 0,
+          totalFormsToday: 0,
+          totalFormsThisWeek: 0,
+          avgRiskToday: 0,
+          avgRiskWeek: 0,
+          highRiskUsers: 0,
+          incidentsThisMonth: 0,
+          complianceRate: 0,
         },
-      },
-    });
+        users: [],
+        charts: {
+          dailyRiskTrend: [],
+          riskDistribution: { low: 0, medium: 0, high: 0, critical: 0 },
+          hazardData: [],
+          ppeComplianceTrend: [],
+          fatigueDistribution: [],
+        },
+      });
+    }
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -27,15 +46,33 @@ export async function GET() {
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Get all forms for metrics
+    const members = await prisma.teamMember.findMany({
+      where: { teamId },
+      select: { userId: true },
+    });
+    const memberUserIds = members.map((m) => m.userId);
+    const userWhere = { id: { in: memberUserIds } };
+
+    const users = await prisma.user.findMany({
+      where: userWhere,
+      include: {
+        dailyForms: {
+          orderBy: { date: "desc" },
+          take: 30,
+        },
+      },
+    });
+
     const allForms = await prisma.dailyForm.findMany({
-      where: { date: { gte: thirtyDaysAgo } },
+      where: {
+        date: { gte: thirtyDaysAgo },
+        userId: { in: memberUserIds },
+      },
       orderBy: { date: "desc" },
     });
 
     const formsLast7Days = allForms.filter((f) => new Date(f.date) >= sevenDaysAgo);
 
-    // Calculate overall metrics
     const totalUsers = users.length;
     const activeUsers = users.filter((u) =>
       u.dailyForms.some((f) => new Date(f.date) >= sevenDaysAgo)
@@ -52,7 +89,6 @@ export async function GET() {
 
     const totalFormsThisWeek = formsLast7Days.length;
 
-    // Average risk scores (from ML model, 0-1 scale)
     const avgRiskToday =
       totalFormsToday > 0
         ? allForms
@@ -72,7 +108,6 @@ export async function GET() {
         ? formsLast7Days.reduce((sum, f) => sum + f.riskScore, 0) / formsLast7Days.length
         : 0;
 
-    // High risk users (avg risk > 50 in last 7 days)
     const highRiskUsers = users.filter((u) => {
       const recentForms = u.dailyForms.filter((f) => new Date(f.date) >= sevenDaysAgo);
       if (recentForms.length === 0) return false;
@@ -80,10 +115,8 @@ export async function GET() {
       return avgRisk > 50;
     }).length;
 
-    // Incidents this month
     const incidentsThisMonth = allForms.filter((f) => f.incidentReported).length;
 
-    // Daily risk trend (last 7 days)
     const dailyRiskTrend: { date: string; avgRisk: number; formCount: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
@@ -100,7 +133,6 @@ export async function GET() {
       });
     }
 
-    // Risk distribution (using 0-100 scale thresholds)
     const riskDistribution = {
       low: allForms.filter((f) => f.riskScore <= 30).length,
       medium: allForms.filter((f) => f.riskScore > 30 && f.riskScore <= 60).length,
@@ -108,7 +140,6 @@ export async function GET() {
       critical: allForms.filter((f) => f.riskScore > 80).length,
     };
 
-    // Hazard frequency
     const hazardFrequency: Record<string, number> = {};
     allForms.forEach((form) => {
       const hazards = form.hazardExposures as Record<string, number>;
@@ -123,7 +154,6 @@ export async function GET() {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
-    // PPE compliance trend
     const ppeComplianceTrend: { date: string; compliance: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
@@ -142,7 +172,6 @@ export async function GET() {
       });
     }
 
-    // Format users for response
     const formattedUsers = users.map((user) => {
       const recentForms = user.dailyForms.filter((f) => new Date(f.date) >= sevenDaysAgo);
       const avgRisk =
@@ -155,13 +184,11 @@ export async function GET() {
         : false;
 
       const latestRiskScore = latestForm?.riskScore ?? 0;
-      
-      // Calculate PPE compliance average
+
       const avgPpeCompliance = recentForms.length > 0
         ? Math.round((recentForms.reduce((sum, f) => sum + f.ppeComplianceRate, 0) / recentForms.length) * 100)
         : 0;
 
-      // Format forms for display
       const formSubmissions = user.dailyForms.slice(0, 10).map((form) => ({
         id: form.id,
         date: form.date.toISOString(),
@@ -201,16 +228,15 @@ export async function GET() {
       };
     });
 
-    // Sort users by risk score (highest first)
     formattedUsers.sort((a, b) => b.latestRiskScore - a.latestRiskScore);
 
-    // Fatigue distribution
     const fatigueDistribution = Array.from({ length: 10 }, (_, i) => ({
       level: i + 1,
       count: formsLast7Days.filter((f) => f.fatigueLevel === i + 1).length,
     }));
 
     return NextResponse.json({
+      teamId,
       metrics: {
         totalUsers,
         activeUsers,

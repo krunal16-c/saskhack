@@ -42,6 +42,9 @@ import {
   Send,
   User,
   Bot,
+  UserPlus,
+  Plus,
+  Settings2,
 } from "lucide-react";
 import {
   LineChart,
@@ -141,11 +144,41 @@ interface UserDetailData {
 type SortField = "latestRiskScore" | "name" | "avgPpeCompliance" | "age" | "yearsExperience" | "formsThisWeek";
 type SortOrder = "asc" | "desc";
 
+interface TeamInfo {
+  id: string;
+  name: string;
+  description: string | null;
+  memberCount: number;
+  members: { id: string; name: string | null; email: string }[];
+  createdAt: string;
+}
+
+interface UserOption {
+  id: string;
+  name: string | null;
+  email: string;
+  jobTitle: string | null;
+  department: string | null;
+}
+
 export default function AdminDashboard() {
+  const [teams, setTeams] = useState<TeamInfo[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(true);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [createTeamOpen, setCreateTeamOpen] = useState(false);
+  const [createTeamName, setCreateTeamName] = useState("");
+  const [createTeamDescription, setCreateTeamDescription] = useState("");
+  const [createTeamLoading, setCreateTeamLoading] = useState(false);
+  const [createTeamError, setCreateTeamError] = useState<string | null>(null);
+  const [manageTeamOpen, setManageTeamOpen] = useState(false);
+  const [teamDetail, setTeamDetail] = useState<{ team: TeamInfo } | null>(null);
+  const [allUsers, setAllUsers] = useState<UserOption[]>([]);
+  const [manageTeamLoading, setManageTeamLoading] = useState(false);
+  const [addMemberUserId, setAddMemberUserId] = useState<string>("");
   const [userDetailData, setUserDetailData] = useState<UserDetailData | null>(null);
   const [loadingUserData, setLoadingUserData] = useState(false);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["riskScore", "fatigueLevel"]);
@@ -222,11 +255,31 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  const fetchData = useCallback(async (showRefresh = false) => {
-    if (showRefresh) setRefreshing(true);
-
+  const fetchTeams = useCallback(async () => {
+    setTeamsLoading(true);
     try {
-      const response = await fetch("/api/admin/dashboard");
+      const response = await fetch("/api/admin/teams");
+      if (response.ok) {
+        const result = await response.json();
+        setTeams(result.teams ?? []);
+      }
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+    } finally {
+      setTeamsLoading(false);
+    }
+  }, []);
+
+  const fetchData = useCallback(async (showRefresh = false) => {
+    if (!selectedTeamId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+    if (showRefresh) setRefreshing(true);
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/admin/dashboard?teamId=${encodeURIComponent(selectedTeamId)}`);
       if (response.ok) {
         const result = await response.json();
         setData(result);
@@ -237,7 +290,7 @@ export default function AdminDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedTeamId]);
 
   const fetchUserData = useCallback(async (userId: string) => {
     setLoadingUserData(true);
@@ -255,8 +308,17 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchTeams();
+  }, [fetchTeams]);
+
+  useEffect(() => {
+    if (selectedTeamId) {
+      fetchData();
+    } else {
+      setData(null);
+      setLoading(false);
+    }
+  }, [selectedTeamId, fetchData]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -265,6 +327,108 @@ export default function AdminDashboard() {
       setUserDetailData(null);
     }
   }, [selectedUser, fetchUserData]);
+
+  const createTeam = useCallback(async () => {
+    const name = createTeamName.trim();
+    if (!name) {
+      setCreateTeamError("Team name is required.");
+      return;
+    }
+    setCreateTeamError(null);
+    setCreateTeamLoading(true);
+    try {
+      const response = await fetch("/api/admin/teams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description: createTeamDescription.trim() || null }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setCreateTeamError(result.error || "Failed to create team.");
+        return;
+      }
+      setCreateTeamOpen(false);
+      setCreateTeamName("");
+      setCreateTeamDescription("");
+      await fetchTeams();
+      if (result.team?.id) setSelectedTeamId(result.team.id);
+    } catch (err) {
+      setCreateTeamError("Failed to create team.");
+    } finally {
+      setCreateTeamLoading(false);
+    }
+  }, [createTeamName, createTeamDescription, fetchTeams]);
+
+  const openManageTeam = useCallback(async () => {
+    if (!selectedTeamId) return;
+    setManageTeamOpen(true);
+    setManageTeamLoading(true);
+    setTeamDetail(null);
+    setAllUsers([]);
+    setAddMemberUserId("");
+    try {
+      const [teamRes, usersRes] = await Promise.all([
+        fetch(`/api/admin/teams/${selectedTeamId}`),
+        fetch("/api/admin/users"),
+      ]);
+      if (teamRes.ok) {
+        const teamData = await teamRes.json();
+        setTeamDetail(teamData);
+      }
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setAllUsers(usersData.users ?? []);
+      }
+    } catch (err) {
+      console.error("Error loading manage team:", err);
+    } finally {
+      setManageTeamLoading(false);
+    }
+  }, [selectedTeamId]);
+
+  const addMemberToTeam = useCallback(async () => {
+    if (!selectedTeamId || !addMemberUserId) return;
+    try {
+      const response = await fetch(`/api/admin/teams/${selectedTeamId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: addMemberUserId }),
+      });
+      if (!response.ok) return;
+      setAddMemberUserId("");
+      const teamRes = await fetch(`/api/admin/teams/${selectedTeamId}`);
+      if (teamRes.ok) {
+        const teamData = await teamRes.json();
+        setTeamDetail(teamData);
+      }
+      fetchData(true);
+      fetchTeams();
+    } catch (err) {
+      console.error("Error adding member:", err);
+    }
+  }, [selectedTeamId, addMemberUserId, fetchData, fetchTeams]);
+
+  const removeMemberFromTeam = useCallback(
+    async (userId: string) => {
+      if (!selectedTeamId) return;
+      try {
+        const response = await fetch(`/api/admin/teams/${selectedTeamId}/members/${userId}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) return;
+        const teamRes = await fetch(`/api/admin/teams/${selectedTeamId}`);
+        if (teamRes.ok) {
+          const teamData = await teamRes.json();
+          setTeamDetail(teamData);
+        }
+        fetchData(true);
+        fetchTeams();
+      } catch (err) {
+        console.error("Error removing member:", err);
+      }
+    },
+    [selectedTeamId, fetchData, fetchTeams]
+  );
 
   const toggleMetric = (metricKey: string) => {
     setSelectedMetrics((prev) =>
@@ -397,7 +561,7 @@ export default function AdminDashboard() {
     });
   };
 
-  if (loading) {
+  if (teamsLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -435,19 +599,85 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-2xl font-bold">Admin Dashboard</h1>
             <p className="text-muted-foreground">
-              Overview of all workers and safety metrics
+              Team-based safety analytics and worker overview
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => fetchData(true)}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          {selectedTeamId && (
+            <Button
+              variant="outline"
+              onClick={() => fetchData(true)}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          )}
         </div>
 
+        {/* Team Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Team
+            </CardTitle>
+            <CardDescription>
+              Select a team to view analytics, or create and manage teams
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-4">
+            <div className="min-w-[200px]">
+              <Select
+                value={selectedTeamId ?? ""}
+                onValueChange={(v) => {
+                  setSelectedTeamId(v || null);
+                  setSelectedUser(null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.memberCount})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => { setCreateTeamError(null); setCreateTeamOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create team
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!selectedTeamId}
+              onClick={openManageTeam}
+            >
+              <Settings2 className="h-4 w-4 mr-2" />
+              Manage team
+            </Button>
+          </CardContent>
+        </Card>
+
+        {!selectedTeamId && (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Select a team above to view analytics, metrics, and workers.
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedTeamId && loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        )}
+
+        {selectedTeamId && !loading && (
+          <>
         {/* Key Metrics */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
@@ -1320,7 +1550,140 @@ export default function AdminDashboard() {
             )}
           </CardContent>
         </Card>
+          </>
+        )}
       </div>
+
+      {/* Create Team Modal */}
+      {createTeamOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !createTeamLoading && setCreateTeamOpen(false)}>
+          <Card className="w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Create team</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => setCreateTeamOpen(false)} disabled={createTeamLoading}>
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {createTeamError && (
+                <p className="text-sm text-destructive">{createTeamError}</p>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="team-name">Team name</Label>
+                <Input
+                  id="team-name"
+                  value={createTeamName}
+                  onChange={(e) => setCreateTeamName(e.target.value)}
+                  placeholder="e.g. Field Crew A"
+                  disabled={createTeamLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="team-desc">Description (optional)</Label>
+                <Input
+                  id="team-desc"
+                  value={createTeamDescription}
+                  onChange={(e) => setCreateTeamDescription(e.target.value)}
+                  placeholder="Brief description"
+                  disabled={createTeamLoading}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setCreateTeamOpen(false)} disabled={createTeamLoading}>
+                  Cancel
+                </Button>
+                <Button onClick={createTeam} disabled={createTeamLoading}>
+                  {createTeamLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Create
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Manage Team Modal */}
+      {manageTeamOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setManageTeamOpen(false)}>
+          <Card className="w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Manage team</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => setManageTeamOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4 flex-1 overflow-auto">
+              {manageTeamLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {teamDetail?.team && (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium">{teamDetail.team.name}</p>
+                        {teamDetail.team.description && (
+                          <p className="text-sm text-muted-foreground">{teamDetail.team.description}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Add member</Label>
+                        <div className="flex gap-2">
+                          <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select user" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allUsers
+                                .filter((u) => !teamDetail.team.members.some((m) => m.id === u.id))
+                                .map((u) => (
+                                  <SelectItem key={u.id} value={u.id}>
+                                    {u.name || u.email} {u.department ? `(${u.department})` : ""}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                          <Button onClick={addMemberToTeam} disabled={!addMemberUserId} size="sm">
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Members ({teamDetail.team.members.length})</Label>
+                        <ul className="border rounded-lg divide-y">
+                          {teamDetail.team.members.length === 0 ? (
+                            <li className="px-3 py-4 text-sm text-muted-foreground text-center">
+                              No members. Add users above.
+                            </li>
+                          ) : (
+                            teamDetail.team.members.map((m) => (
+                              <li key={m.id} className="px-3 py-2 flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-sm">{m.name || "Unknown"}</p>
+                                  <p className="text-xs text-muted-foreground">{m.email}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => removeMemberFromTeam(m.id)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
