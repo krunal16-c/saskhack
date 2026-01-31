@@ -34,6 +34,10 @@ import {
   FileText,
   Clock,
   Zap,
+  Mail,
+  Loader2,
+  Ban,
+  FileWarning,
 } from "lucide-react";
 import {
   LineChart,
@@ -155,6 +159,31 @@ export default function AdminDashboard() {
   const [ppeComplianceFilter, setPpeComplianceFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("latestRiskScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [notifyLoading, setNotifyLoading] = useState<string | null>(null);
+  const [notifyMessage, setNotifyMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const sendNotifyEmail = useCallback(async (userId: string, type: "no_form" | "high_risk") => {
+    const key = `${userId}-${type}`;
+    setNotifyMessage(null);
+    setNotifyLoading(key);
+    try {
+      const response = await fetch("/api/admin/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, userIds: [userId] }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setNotifyMessage({ type: "error", text: result.error || "Failed to send email." });
+        return;
+      }
+      setNotifyMessage({ type: "success", text: result.message || "Email sent." });
+    } catch (err) {
+      setNotifyMessage({ type: "error", text: "Failed to send notification." });
+    } finally {
+      setNotifyLoading(null);
+    }
+  }, []);
 
   const fetchData = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -806,7 +835,10 @@ export default function AdminDashboard() {
                         className={`border-b hover:bg-muted/50 cursor-pointer transition-colors ${
                           selectedUser?.id === user.id ? "bg-primary/10" : ""
                         }`}
-                        onClick={() => setSelectedUser(selectedUser?.id === user.id ? null : user)}
+                        onClick={() => {
+                          setSelectedUser(selectedUser?.id === user.id ? null : user);
+                          setNotifyMessage(null);
+                        }}
                       >
                         <td className="py-3 px-2">
                           <div>
@@ -874,6 +906,58 @@ export default function AdminDashboard() {
                   >
                     <X className="h-4 w-4" />
                   </Button>
+                </div>
+
+                {/* Send notification email to this worker */}
+                <div className="mb-6">
+                  <h5 className="font-medium mb-2 flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Send notification email
+                  </h5>
+                  {notifyMessage && (
+                    <div
+                      className={`mb-3 p-2 rounded text-sm ${
+                        notifyMessage.type === "success"
+                          ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                          : "bg-red-500/10 text-red-600 border border-red-500/20"
+                      }`}
+                    >
+                      {notifyMessage.text}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={!!notifyLoading}
+                      onClick={() => sendNotifyEmail(selectedUser.id, "no_form")}
+                    >
+                      {notifyLoading === `${selectedUser.id}-no_form` ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <FileWarning className="h-3.5 w-3.5" />
+                      )}
+                      No Form Today
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                      disabled={!!notifyLoading}
+                      onClick={() => sendNotifyEmail(selectedUser.id, "high_risk")}
+                    >
+                      {notifyLoading === `${selectedUser.id}-high_risk` ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Ban className="h-3.5 w-3.5" />
+                      )}
+                      Do Not Come to Work (High Risk)
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Sends an email to {selectedUser.email}
+                  </p>
                 </div>
 
                 {/* User Info Grid */}
