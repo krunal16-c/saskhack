@@ -109,94 +109,96 @@ export default function WorkerDashboard() {
       <DashboardLayout>
         <div className="space-y-8 pb-10">
           {/* Hero Section with Greeting */}
-          <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-10 text-primary-foreground md:px-10 md:py-12 shadow-xl">
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium backdrop-blur-md">
-                  <Calendar className="h-3 w-3" />
-                  {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-10 text-primary-foreground md:px-10 md:py-12 shadow-xl mb-4">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium backdrop-blur-md">
+                    <Calendar className="h-3 w-3" />
+                    {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                  </div>
+                  <h1 className="text-3xl font-bold tracking-tight md:text-5xl">
+                    {greeting}, {profile?.full_name?.split(" ")[0] || "User"}!
+                  </h1>
+                  <p className="max-w-md text-primary-foreground/90 text-lg leading-relaxed">
+                    {todayFormSubmitted 
+                      ? "Great job! Your safety check is complete. Stay alert and stay safe."
+                      : "Your safety matters. Please complete your daily safety check-in before starting work."
+                    }
+                  </p>
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-                  {greeting}, {profile?.full_name?.split(" ")[0] || "User"}!
-                </h1>
-                <p className="max-w-md text-primary-foreground/80 text-lg">
-                  {todayFormSubmitted 
-                    ? "Great job! You've already submitted your safety check for today. Stay safe out there."
-                    : "Your safety is our priority. Please take a moment to complete your daily safety check-in."
-                  }
-                </p>
-              </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                {!todayFormSubmitted ? (
-                  <Button 
-                    onClick={() => router.push("/worker/form")} 
-                    size="lg" 
-                    className="bg-white text-primary hover:bg-white/90 shadow-lg group"
-                  >
-                    <ClipboardList className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    Complete Daily Check-in
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline"
-                    onClick={() => router.push("/worker/form")} 
-                    size="lg" 
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Update Check-in
-                  </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  onClick={() => router.push("/worker/alerts")}
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 relative"
-                >
-                  <AlertTriangle className="mr-2 h-5 w-5" />
-                  View Alerts
-                  {unreadAlerts > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-primary">
-                      {unreadAlerts}
-                    </span>
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  {!todayFormSubmitted ? (
+                    <Button 
+                      onClick={() => router.push("/worker/form")} 
+                      size="lg" 
+                      className="bg-white text-primary hover:bg-white/90 shadow-xl group h-14 px-8 text-base font-bold"
+                    >
+                      <ClipboardList className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
+                      Complete Daily Check-in
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline"
+                      onClick={() => router.push("/worker/form")} 
+                      size="lg" 
+                      className="bg-white/10 border-white/30 text-white hover:bg-white/20 h-14 px-8"
+                    >
+                      <RefreshCw className="mr-2 h-5 w-5" />
+                      Update Check-in
+                    </Button>
                   )}
-                </Button>
-              </div>
-            </div>
-            
-            {/* Background decorative elements */}
-            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 left-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Main Risk Status */}
-            <Card className="lg:col-span-2 overflow-hidden border-none shadow-md">
-              <CardHeader className="pb-2 border-b bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl">Safety Wellness Score</CardTitle>
-                    <CardDescription>Comprehensive risk assessment overview</CardDescription>
-                  </div>
                   <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => fetchDashboard(true)}
-                    disabled={refreshing}
+                    variant="outline" 
+                    size="lg" 
+                    onClick={() => router.push("/worker/alerts")}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20 relative h-14 px-8"
                   >
-                    <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+                    <AlertTriangle className="mr-2 h-6 w-6" />
+                    View Alerts
+                    {unreadAlerts > 0 && (
+                      <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-xs font-black text-white ring-4 ring-primary animate-pulse">
+                        {unreadAlerts}
+                      </span>
+                    )}
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="flex flex-col md:flex-row items-center gap-10">
-                  <div className="relative group">
-                    <RiskScoreGauge score={latestRisk.total_score} size="lg" />
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                      <RiskBadge level={latestRisk.risk_level} size="sm" />
+              </div>
+              
+              {/* Background decorative elements */}
+              <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-white/10 blur-[100px]" />
+              <div className="absolute -bottom-20 left-20 h-80 w-80 rounded-full bg-white/5 blur-[100px]" />
+            </div>
+
+            <div className="grid gap-8 lg:grid-cols-3">
+              {/* Main Risk Status */}
+              <Card className="lg:col-span-2 overflow-hidden border-none shadow-lg">
+                <CardHeader className="pb-4 border-b bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-2xl font-bold">Safety Wellness Score</CardTitle>
+                      <CardDescription className="text-base">Comprehensive risk assessment overview</CardDescription>
                     </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => fetchDashboard(true)}
+                      disabled={refreshing}
+                      className="hover:bg-primary/10 rounded-full"
+                    >
+                      <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
+                    </Button>
                   </div>
+                </CardHeader>
+                <CardContent className="p-8 lg:p-10">
+                  <div className="flex flex-col md:flex-row items-center gap-12">
+                    <div className="relative group shrink-0">
+                      <RiskScoreGauge score={latestRisk.total_score} size="lg" showLabel={false} />
+                      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap drop-shadow-md">
+                        <RiskBadge level={latestRisk.risk_level} size="md" />
+                      </div>
+                    </div>
+
 
                   <div className="flex-1 space-y-6">
                     <div className="grid grid-cols-2 gap-4">

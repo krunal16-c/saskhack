@@ -31,17 +31,17 @@ export function RiskScoreGauge({
   };
 
   const riskColors = {
-    low: "from-emerald-500 to-emerald-400 text-emerald-500",
-    medium: "from-amber-500 to-yellow-400 text-amber-500",
-    high: "from-orange-500 to-orange-400 text-orange-500",
-    critical: "from-red-600 to-red-500 text-red-500",
+    low: "stroke-success text-success",
+    medium: "stroke-warning text-warning",
+    high: "stroke-warning text-warning",
+    critical: "stroke-destructive text-destructive",
   };
 
   const riskBgColors = {
-    low: "bg-emerald-500/10",
-    medium: "bg-amber-500/10",
-    high: "bg-orange-500/10",
-    critical: "bg-red-500/10",
+    low: "bg-success/10",
+    medium: "bg-warning/10",
+    high: "bg-warning/20",
+    critical: "bg-destructive/10",
   };
 
   const riskLabels = {
