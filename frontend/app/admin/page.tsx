@@ -361,727 +361,513 @@ export default function AdminDashboard() {
     fatigueDistribution: [],
   };
 
-  return (
-    <DashboardLayout>
-      <div className="space-y-6 animate-in fade-in duration-500">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">
-              Overview of all workers and safety metrics
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => fetchData(true)}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-        </div>
-
-        {/* Key Metrics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Workers"
-            value={metrics.totalUsers}
-            subtitle={`${metrics.activeUsers} active this week`}
-            icon={Users}
-          />
-          <StatCard
-            title="Forms Today"
-            value={metrics.totalFormsToday}
-            subtitle={`${metrics.totalFormsThisWeek} this week`}
-            icon={ClipboardList}
-          />
-          <StatCard
-            title="Avg Risk Score"
-            value={metrics.avgRiskWeek}
-            subtitle="7-day average"
-            icon={Shield}
-            variant={
-              metrics.avgRiskWeek <= 30
-                ? "success"
-                : metrics.avgRiskWeek <= 60
-                ? "warning"
-                : "danger"
-            }
-          />
-          <StatCard
-            title="High Risk Workers"
-            value={metrics.highRiskUsers}
-            icon={AlertTriangle}
-            variant={metrics.highRiskUsers > 0 ? "danger" : "success"}
-          />
-        </div>
-
-        {/* Secondary Metrics */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatCard
-            title="PPE Compliance"
-            value={`${metrics.complianceRate}%`}
-            icon={HardHat}
-            variant={metrics.complianceRate >= 80 ? "success" : metrics.complianceRate >= 60 ? "warning" : "danger"}
-          />
-          <StatCard
-            title="Incidents (30 days)"
-            value={metrics.incidentsThisMonth}
-            icon={AlertTriangle}
-            variant={metrics.incidentsThisMonth === 0 ? "success" : "warning"}
-          />
-          <StatCard
-            title="Today's Avg Risk"
-            value={metrics.avgRiskToday}
-            icon={Activity}
-            variant={
-              metrics.avgRiskToday <= 30
-                ? "success"
-                : metrics.avgRiskToday <= 60
-                ? "warning"
-                : "danger"
-            }
-          />
-        </div>
-
-        {/* Overview Charts Toggle */}
-        <Card
-          className="cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={() => setShowOverview(!showOverview)}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Overview Charts</h3>
-                  <p className="text-sm text-muted-foreground">
-                    View aggregated metrics and trends across all workers
-                  </p>
-                </div>
+    return (
+      <DashboardLayout>
+        <div className="space-y-8 pb-10">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-bold tracking-tight">System Overview</h1>
+              <p className="text-muted-foreground flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                Monitoring {metrics.totalUsers} workers across {departments.length} departments
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex flex-col items-end px-4 py-1 border-r">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Sync Status</span>
+                <span className="text-sm font-bold text-emerald-500 flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
               </div>
-              <Button variant="ghost" size="icon">
-                {showOverview ? (
-                  <ChevronUp className="h-5 w-5" />
-                ) : (
-                  <ChevronDown className="h-5 w-5" />
-                )}
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => fetchData(true)}
+                disabled={refreshing}
+                className="shadow-sm"
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
+                Refresh Data
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Charts Section - Collapsible */}
-        {showOverview && (
-          <div className="space-y-6 animate-in slide-in-from-top duration-300">
-            {/* Charts Row 1 */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Daily Risk Trend */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Risk Score Trend (7 Days)
-                  </CardTitle>
-                  <CardDescription>Average daily risk score across all workers (0-100)</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={charts.dailyRiskTrend}>
-                        <defs>
-                          <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="date" className="text-xs" />
-                        <YAxis domain={[0, 100]} className="text-xs" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                        />
-                        <Legend />
-                        <Area
-                          type="monotone"
-                          dataKey="avgRisk"
-                          name="Avg Risk"
-                          stroke="hsl(var(--primary))"
-                          fill="url(#riskGradient)"
-                          strokeWidth={2}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="formCount"
-                          name="Forms Submitted"
-                          stroke="#8b5cf6"
-                          strokeWidth={2}
-                          dot={{ fill: "#8b5cf6" }}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
+          {/* Key Metrics Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Active Workforce"
+              value={metrics.activeUsers}
+              subtitle={`${metrics.totalUsers} total registered`}
+              icon={Users}
+              className="border-none shadow-md bg-white dark:bg-zinc-950"
+            />
+            <StatCard
+              title="Today's Check-ins"
+              value={metrics.totalFormsToday}
+              subtitle={`${metrics.totalFormsThisWeek} this week`}
+              icon={ClipboardList}
+              className="border-none shadow-md bg-white dark:bg-zinc-950"
+            />
+            <StatCard
+              title="Global Risk Index"
+              value={metrics.avgRiskWeek}
+              subtitle="7-day rolling average"
+              icon={Shield}
+              variant={
+                metrics.avgRiskWeek <= 30 ? "success" : 
+                metrics.avgRiskWeek <= 60 ? "warning" : "danger"
+              }
+              className="border-none shadow-md bg-white dark:bg-zinc-950"
+            />
+            <StatCard
+              title="Safety Incidents"
+              value={metrics.incidentsThisMonth}
+              subtitle="Last 30 days"
+              icon={AlertTriangle}
+              variant={metrics.incidentsThisMonth === 0 ? "success" : "danger"}
+              className="border-none shadow-md bg-white dark:bg-zinc-950"
+            />
+          </div>
+
+          {/* Advanced Analytics Grid */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Primary Trend Chart */}
+            <Card className="lg:col-span-2 border-none shadow-md overflow-hidden">
+              <CardHeader className="bg-muted/30 border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Risk & Participation Trends</CardTitle>
+                    <CardDescription>Daily average risk vs. submission volume</CardDescription>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* PPE Compliance Trend */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <HardHat className="h-5 w-5" />
-                    PPE Compliance Trend (7 Days)
-                  </CardTitle>
-                  <CardDescription>Daily PPE compliance rate</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={charts.ppeComplianceTrend}>
-                        <defs>
-                          <linearGradient id="ppeGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="date" className="text-xs" />
-                        <YAxis domain={[0, 100]} className="text-xs" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                          formatter={(value: number) => [`${value}%`, "Compliance"]}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="compliance"
-                          name="Compliance %"
-                          stroke="#22c55e"
-                          fill="url(#ppeGradient)"
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Fatigue Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Fatigue Level Distribution (7 Days)
-                </CardTitle>
-                <CardDescription>Distribution of reported fatigue levels</CardDescription>
+                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="h-[200px]">
+              <CardContent className="pt-6">
+                <div className="h-[350px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={charts.fatigueDistribution}>
+                    <AreaChart data={charts.dailyRiskTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
-                        <linearGradient id="fatigueGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                        <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="level" className="text-xs" />
-                      <YAxis className="text-xs" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.1)" />
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(var(--card))",
                           border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
+                          borderRadius: "12px",
+                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                         }}
                       />
+                      <Legend verticalAlign="top" height={36} align="right" iconType="circle" />
                       <Area
                         type="monotone"
-                        dataKey="count"
-                        name="Workers"
+                        dataKey="avgRisk"
+                        name="Risk Level"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={3}
+                        fill="url(#riskGradient)"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="formCount"
+                        name="Submissions"
                         stroke="#8b5cf6"
-                        fill="url(#fatigueGradient)"
-                        strokeWidth={2}
+                        strokeWidth={3}
+                        dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff" }}
+                        activeDot={{ r: 6, strokeWidth: 0 }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        )}
 
-        {/* Workers Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  All Workers ({filteredUsers.length})
-                </CardTitle>
-                <CardDescription>
-                  Click on a worker to view details and form submissions
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-                {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
-              </Button>
+            {/* Distribution & Compliance */}
+            <div className="space-y-6">
+              <Card className="border-none shadow-md overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b pb-3">
+                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Compliance Health</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="space-y-1">
+                      <p className="text-3xl font-bold">{metrics.complianceRate}%</p>
+                      <p className="text-xs text-muted-foreground font-medium">Global PPE Compliance</p>
+                    </div>
+                    <div className={cn(
+                      "p-3 rounded-2xl",
+                      metrics.complianceRate >= 85 ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
+                    )}>
+                      <HardHat className="h-8 w-8" />
+                    </div>
+                  </div>
+                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full transition-all duration-1000",
+                        metrics.complianceRate >= 85 ? "bg-emerald-500" : "bg-amber-500"
+                      )}
+                      style={{ width: `${metrics.complianceRate}%` }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-none shadow-md overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b pb-3">
+                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Risk Distribution</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {Object.entries(charts.riskDistribution).map(([level, count]) => (
+                      <div key={level} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-medium">
+                          <span className="capitalize">{level}</span>
+                          <span>{count} workers</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full",
+                              level === "low" ? "bg-emerald-500" :
+                              level === "medium" ? "bg-amber-500" :
+                              level === "high" ? "bg-orange-500" : "bg-red-500"
+                            )}
+                            style={{ width: `${(count / Math.max(metrics.totalUsers, 1)) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+          </div>
 
-            {/* Filters Section */}
-            {showFilters && (
-              <div className="mt-4 p-4 rounded-lg bg-muted/30 border animate-in slide-in-from-top duration-200">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {/* Search */}
-                  <div className="space-y-2">
-                    <Label>Search</Label>
-                    <Input
-                      placeholder="Name, email, job title..."
+          {/* Worker Management Section */}
+          <Card className="border-none shadow-lg overflow-hidden">
+            <CardHeader className="bg-muted/20 border-b pb-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-xl">Workforce Directory</CardTitle>
+                  <CardDescription>Real-time safety status monitoring</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search workers..." 
+                      className="pl-9 w-full md:w-[250px] bg-background shadow-sm"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-
-                  {/* Risk Level Filter */}
-                  <div className="space-y-2">
-                    <Label>Risk Level</Label>
-                    <Select value={riskLevelFilter} onValueChange={setRiskLevelFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Levels</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Department Filter */}
-                  <div className="space-y-2">
-                    <Label>Department</Label>
-                    <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Departments</SelectItem>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* PPE Compliance Filter */}
-                  <div className="space-y-2">
-                    <Label>PPE Compliance</Label>
-                    <Select value={ppeComplianceFilter} onValueChange={setPpeComplianceFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="high">High (≥80%)</SelectItem>
-                        <SelectItem value="medium">Medium (50-79%)</SelectItem>
-                        <SelectItem value="low">Low (&lt;50%)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Age Range */}
-                  <div className="space-y-2">
-                    <Label>Age Range</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={ageMinFilter}
-                        onChange={(e) => setAgeMinFilter(e.target.value)}
-                        className="w-20"
-                      />
-                      <span className="self-center">-</span>
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={ageMaxFilter}
-                        onChange={(e) => setAgeMaxFilter(e.target.value)}
-                        className="w-20"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Experience Min */}
-                  <div className="space-y-2">
-                    <Label>Min Experience (years)</Label>
-                    <Input
-                      type="number"
-                      placeholder="Min years"
-                      value={experienceMinFilter}
-                      onChange={(e) => setExperienceMinFilter(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Sort By */}
-                  <div className="space-y-2">
-                    <Label>Sort By</Label>
-                    <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="latestRiskScore">Risk Score</SelectItem>
-                        <SelectItem value="name">Name</SelectItem>
-                        <SelectItem value="avgPpeCompliance">PPE Compliance</SelectItem>
-                        <SelectItem value="age">Age</SelectItem>
-                        <SelectItem value="yearsExperience">Experience</SelectItem>
-                        <SelectItem value="formsThisWeek">Forms This Week</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Sort Order */}
-                  <div className="space-y-2">
-                    <Label>Order</Label>
-                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="desc">High to Low</SelectItem>
-                        <SelectItem value="asc">Low to High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex justify-end">
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    Clear Filters
+                  <Button
+                    variant={showFilters ? "secondary" : "outline"}
+                    size="icon"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="shadow-sm"
+                  >
+                    <Filter className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium">Name</th>
-                    <th className="text-left py-3 px-2 font-medium">Department</th>
-                    <th className="text-center py-3 px-2 font-medium">Risk</th>
-                    <th className="text-center py-3 px-2 font-medium">PPE</th>
-                    <th className="text-center py-3 px-2 font-medium">Forms (7d)</th>
-                    <th className="text-center py-3 px-2 font-medium">Today</th>
-                    <th className="text-center py-3 px-2 font-medium">Incidents</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.length > 0 ? (
-                    filteredUsers.map((user) => (
-                      <tr
-                        key={user.id}
-                        className={`border-b hover:bg-muted/50 cursor-pointer transition-colors ${
-                          selectedUser?.id === user.id ? "bg-primary/10" : ""
-                        }`}
-                        onClick={() => setSelectedUser(selectedUser?.id === user.id ? null : user)}
-                      >
-                        <td className="py-3 px-2">
-                          <div>
-                            <p className="font-medium">{user.name}</p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-2">
-                          <div>
-                            <p>{user.jobTitle || "—"}</p>
-                            <p className="text-xs text-muted-foreground">{user.department || "—"}</p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <RiskBadge level={user.riskLevel} size="sm" />
-                            <span className="text-xs text-muted-foreground">{user.latestRiskScore}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className={`font-medium ${
-                            user.avgPpeCompliance >= 80 ? "text-emerald-500" :
-                            user.avgPpeCompliance >= 50 ? "text-amber-500" : "text-red-500"
-                          }`}>
-                            {user.avgPpeCompliance}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-center">{user.formsThisWeek}</td>
-                        <td className="py-3 px-2 text-center">
-                          {user.hasSubmittedToday ? (
-                            <CheckCircle className="h-5 w-5 text-emerald-500 mx-auto" />
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
+
+              {/* Enhanced Filters */}
+              {showFilters && (
+                <div className="mt-6 p-6 rounded-2xl bg-background border shadow-inner animate-in slide-in-from-top-4 duration-300">
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Department</Label>
+                      <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                        <SelectTrigger className="bg-muted/30">
+                          <SelectValue placeholder="All Departments" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Departments</SelectItem>
+                          {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Risk Severity</Label>
+                      <Select value={riskLevelFilter} onValueChange={setRiskLevelFilter}>
+                        <SelectTrigger className="bg-muted/30">
+                          <SelectValue placeholder="All Risks" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Severities</SelectItem>
+                          <SelectItem value="critical">Critical Only</SelectItem>
+                          <SelectItem value="high">High & Above</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Compliance</Label>
+                      <Select value={ppeComplianceFilter} onValueChange={setPpeComplianceFilter}>
+                        <SelectTrigger className="bg-muted/30">
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Levels</SelectItem>
+                          <SelectItem value="high">High (≥80%)</SelectItem>
+                          <SelectItem value="low">Low (&lt;50%)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sort By</Label>
+                      <div className="flex gap-2">
+                        <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
+                          <SelectTrigger className="bg-muted/30 flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="latestRiskScore">Risk Score</SelectItem>
+                            <SelectItem value="name">Worker Name</SelectItem>
+                            <SelectItem value="formsThisWeek">Activity</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                        >
+                          {sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Button variant="link" size="sm" onClick={clearFilters} className="text-muted-foreground font-semibold">
+                      Reset All Filters
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-separate border-spacing-0">
+                  <thead className="bg-muted/20">
+                    <tr>
+                      <th className="text-left py-4 px-6 font-bold text-muted-foreground border-b uppercase tracking-wider text-[10px]">Worker Profile</th>
+                      <th className="text-left py-4 px-6 font-bold text-muted-foreground border-b uppercase tracking-wider text-[10px]">Job Details</th>
+                      <th className="text-center py-4 px-6 font-bold text-muted-foreground border-b uppercase tracking-wider text-[10px]">Safety Score</th>
+                      <th className="text-center py-4 px-6 font-bold text-muted-foreground border-b uppercase tracking-wider text-[10px]">PPE Status</th>
+                      <th className="text-center py-4 px-6 font-bold text-muted-foreground border-b uppercase tracking-wider text-[10px]">Today</th>
+                      <th className="text-right py-4 px-6 font-bold text-muted-foreground border-b uppercase tracking-wider text-[10px]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-muted/10">
+                    {filteredUsers.length > 0 ? (
+                      filteredUsers.map((user) => (
+                        <tr
+                          key={user.id}
+                          className={cn(
+                            "group hover:bg-muted/30 transition-all cursor-pointer",
+                            selectedUser?.id === user.id && "bg-primary/5"
                           )}
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          {user.incidentsReported > 0 ? (
-                            <span className="text-destructive font-medium">{user.incidentsReported}</span>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
+                          onClick={() => setSelectedUser(selectedUser?.id === user.id ? null : user)}
+                        >
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary group-hover:scale-110 transition-transform">
+                                {user.name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-bold">{user.name}</p>
+                                <p className="text-xs text-muted-foreground font-medium">{user.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="space-y-0.5">
+                              <p className="font-medium">{user.jobTitle || "—"}</p>
+                              <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                                <Activity className="h-3 w-3" />
+                                {user.department || "General"}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <div className="inline-flex flex-col items-center">
+                              <RiskBadge level={user.riskLevel} size="sm" />
+                              <span className="text-[10px] font-bold text-muted-foreground mt-1">INDEX: {user.latestRiskScore}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="w-12 h-1 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={cn(
+                                    "h-full",
+                                    user.avgPpeCompliance >= 80 ? "bg-emerald-500" :
+                                    user.avgPpeCompliance >= 50 ? "bg-amber-500" : "bg-red-500"
+                                  )}
+                                  style={{ width: `${user.avgPpeCompliance}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-bold">{user.avgPpeCompliance}%</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            {user.hasSubmittedToday ? (
+                              <div className="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+                                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                              </div>
+                            ) : (
+                              <span className="text-[10px] font-bold text-muted-foreground/50 uppercase">Pending</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity font-bold text-xs uppercase">
+                              Inspect <ChevronDown className="ml-1 h-3 w-3" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-20 text-center text-muted-foreground italic">
+                          No workers match your current selection
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                        No workers found matching filters
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Selected User Details with Charts and Forms */}
-            {selectedUser && (
-              <div className="mt-6 p-4 rounded-lg bg-muted/30 border animate-in slide-in-from-top duration-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-semibold text-lg">Worker Details: {selectedUser.name}</h4>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedUser(null)}
-                  >
+          {/* User Detail Side/Bottom Panel */}
+          {selectedUser && (
+            <Card className="border-none shadow-2xl bg-muted/20 animate-in slide-in-from-bottom-8 duration-500 overflow-hidden">
+              <CardHeader className="bg-card border-b pb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-2xl font-bold text-primary-foreground shadow-lg">
+                      {selectedUser.name.charAt(0)}
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">{selectedUser.name}</CardTitle>
+                      <CardDescription className="flex items-center gap-4 mt-1 font-medium">
+                        <span className="flex items-center gap-1"><HardHat className="h-3.5 w-3.5" /> {selectedUser.jobTitle || "No Title"}</span>
+                        <span className="flex items-center gap-1"><Activity className="h-3.5 w-3.5" /> {selectedUser.department || "No Department"}</span>
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="icon" onClick={() => setSelectedUser(null)} className="rounded-full">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-
-                {/* User Info Grid */}
-                <div className="grid gap-4 md:grid-cols-4 mb-6">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-medium">{selectedUser.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Age</p>
-                    <p className="font-medium">{selectedUser.age || "Not set"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Gender</p>
-                    <p className="font-medium capitalize">{selectedUser.gender || "Not set"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Experience</p>
-                    <p className="font-medium">
-                      {selectedUser.yearsExperience !== null ? `${selectedUser.yearsExperience} years` : "Not set"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Latest Risk Score</p>
-                    <p className="font-medium text-primary text-lg">{selectedUser.latestRiskScore}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Avg Risk (7d)</p>
-                    <p className="font-medium">{selectedUser.avgRisk7d}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">PPE Compliance</p>
-                    <p className={`font-medium ${
-                      selectedUser.avgPpeCompliance >= 80 ? "text-emerald-500" :
-                      selectedUser.avgPpeCompliance >= 50 ? "text-amber-500" : "text-red-500"
-                    }`}>
-                      {selectedUser.avgPpeCompliance}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Forms</p>
-                    <p className="font-medium">{selectedUser.totalForms}</p>
-                  </div>
-                </div>
-
-                {/* Form Submissions List */}
-                <div className="mb-6">
-                  <h5 className="font-medium mb-3 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Recent Form Submissions
-                  </h5>
-                  {selectedUser.formSubmissions.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedUser.formSubmissions.map((form) => (
-                        <div key={form.id} className="rounded-lg border bg-background">
-                          <div
-                            className="p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
-                            onClick={() => setExpandedFormId(expandedFormId === form.id ? null : form.id)}
-                          >
-                            <div className="flex items-center gap-4">
-                              <span className="font-medium">{formatDate(form.date)}</span>
-                              <RiskBadge 
-                                level={
-                                  form.riskScore <= 30 ? "low" : 
-                                  form.riskScore <= 60 ? "medium" : 
-                                  form.riskScore <= 80 ? "high" : "critical"
-                                } 
-                                size="sm" 
-                              />
-                              <span className="text-sm text-muted-foreground">
-                                Risk: {form.riskScore}
-                              </span>
-                              <span className={`text-sm ${
-                                form.ppeComplianceRate >= 80 ? "text-emerald-500" :
-                                form.ppeComplianceRate >= 50 ? "text-amber-500" : "text-red-500"
-                              }`}>
-                                PPE: {form.ppeComplianceRate}%
-                              </span>
-                              {form.incidentReported && (
-                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                                  Incident
-                                </span>
-                              )}
-                            </div>
-                            {expandedFormId === form.id ? (
-                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </div>
-                          
-                          {/* Expanded Form Details */}
-                          {expandedFormId === form.id && (
-                            <div className="px-3 pb-3 pt-0 border-t animate-in slide-in-from-top duration-200">
-                              <div className="grid gap-4 md:grid-cols-3 mt-3 text-sm">
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-muted-foreground">Shift Duration:</span>
-                                    <span className="font-medium">{form.shiftDuration} hours</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Zap className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-muted-foreground">Fatigue Level:</span>
-                                    <span className="font-medium">{form.fatigueLevel}/10</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-muted-foreground">Hazard Hours:</span>
-                                    <span className="font-medium">{form.totalHazardExposureHours.toFixed(1)}h</span>
-                                  </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <HardHat className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-muted-foreground">PPE Used:</span>
-                                    <span className="font-medium">{form.ppeItemsUsed}/{form.ppeItemsRequired}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Hazards:</span>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {Object.entries(form.hazardExposures).map(([hazard, hours]) => (
-                                        <span 
-                                          key={hazard} 
-                                          className="text-xs bg-muted px-2 py-0.5 rounded"
-                                        >
-                                          {hazard} ({hours}h)
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="space-y-2">
-                                  {form.symptoms && (form.symptoms as string[]).length > 0 && (
-                                    <div>
-                                      <span className="text-muted-foreground">Symptoms:</span>
-                                      <div className="flex flex-wrap gap-1 mt-1">
-                                        {(form.symptoms as string[]).map((symptom) => (
-                                          <span 
-                                            key={symptom} 
-                                            className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded"
-                                          >
-                                            {symptom}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {form.incidentReported && form.incidentDescription && (
-                                    <div>
-                                      <span className="text-muted-foreground">Incident:</span>
-                                      <p className="text-xs mt-1 p-2 bg-red-50 text-red-700 rounded">
-                                        {form.incidentDescription}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+              </CardHeader>
+              <CardContent className="p-8">
+                <div className="grid gap-10 lg:grid-cols-3">
+                  {/* Stats Column */}
+                  <div className="space-y-6">
+                    <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <Zap className="h-4 w-4" /> Performance Metrics
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-background shadow-sm border space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Risk Rating</p>
+                        <p className="text-2xl font-black text-primary">{selectedUser.latestRiskScore}</p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-background shadow-sm border space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Compliance</p>
+                        <p className="text-2xl font-black text-emerald-500">{selectedUser.avgPpeCompliance}%</p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-background shadow-sm border space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Form Activity</p>
+                        <p className="text-2xl font-black">{selectedUser.formsThisWeek}</p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-background shadow-sm border space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Incidents</p>
+                        <p className={cn("text-2xl font-black", selectedUser.incidentsReported > 0 ? "text-destructive" : "text-muted-foreground")}>
+                          {selectedUser.incidentsReported}
+                        </p>
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No form submissions yet</p>
-                  )}
-                </div>
 
-                {/* Metric Selector for Charts */}
-                {userDetailData && (
-                  <>
-                    <div className="mb-4">
-                      <Label className="text-sm font-medium mb-2 block">Select Metrics to Display:</Label>
-                      <div className="flex flex-wrap gap-4">
-                        {userDetailData.availableMetrics.map((metric) => (
-                          <div key={metric.key} className="flex items-center gap-2">
-                            <Checkbox
-                              id={metric.key}
-                              checked={selectedMetrics.includes(metric.key)}
-                              onCheckedChange={() => toggleMetric(metric.key)}
-                            />
-                            <Label
-                              htmlFor={metric.key}
-                              className="text-sm cursor-pointer flex items-center gap-2"
-                            >
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: metric.color }}
-                              />
-                              {metric.label}
-                            </Label>
-                          </div>
+                    <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 space-y-4">
+                      <h5 className="font-bold text-sm">Background Details</h5>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Years Experience</span>
+                          <span className="font-bold">{selectedUser.yearsExperience || "N/A"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Age</span>
+                          <span className="font-bold">{selectedUser.age || "N/A"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Worker Email</span>
+                          <span className="font-bold text-primary underline truncate ml-4">{selectedUser.email}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Trends Column */}
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" /> Longitudinal Insights
+                      </h4>
+                      <div className="flex gap-2">
+                        {userDetailData?.availableMetrics.map(m => (
+                          <button
+                            key={m.key}
+                            onClick={() => toggleMetric(m.key)}
+                            className={cn(
+                              "px-3 py-1 rounded-full text-[10px] font-bold transition-all border",
+                              selectedMetrics.includes(m.key) 
+                                ? "bg-primary text-primary-foreground border-primary" 
+                                : "bg-background text-muted-foreground hover:bg-muted"
+                            )}
+                          >
+                            {m.label}
+                          </button>
                         ))}
                       </div>
                     </div>
 
-                    {/* User Time Series Chart */}
-                    {loadingUserData ? (
-                      <div className="flex items-center justify-center h-[300px]">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      </div>
-                    ) : userDetailData.timeSeriesData.length > 0 ? (
-                      <div className="h-[350px]">
+                    <div className="h-[300px] w-full bg-background rounded-2xl border p-4 shadow-inner">
+                      {loadingUserData ? (
+                        <div className="h-full flex items-center justify-center">
+                          <RefreshCw className="h-8 w-8 text-primary/30 animate-spin" />
+                        </div>
+                      ) : userDetailData && userDetailData.timeSeriesData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={userDetailData.timeSeriesData}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="date" className="text-xs" />
-                            <YAxis className="text-xs" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.1)" />
+                            <XAxis 
+                              dataKey="date" 
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 10 }}
+                            />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                             <Tooltip
                               contentStyle={{
                                 backgroundColor: "hsl(var(--card))",
@@ -1089,7 +875,6 @@ export default function AdminDashboard() {
                                 borderRadius: "8px",
                               }}
                             />
-                            <Legend />
                             {userDetailData.availableMetrics
                               .filter((m) => selectedMetrics.includes(m.key))
                               .map((metric) => (
@@ -1099,26 +884,55 @@ export default function AdminDashboard() {
                                   dataKey={metric.key}
                                   name={metric.label}
                                   stroke={metric.color}
-                                  strokeWidth={2}
-                                  dot={{ fill: metric.color, r: 4 }}
-                                  activeDot={{ r: 6 }}
+                                  strokeWidth={3}
+                                  dot={{ r: 4, strokeWidth: 2, fill: metric.color, stroke: "#fff" }}
+                                  activeDot={{ r: 6, strokeWidth: 0 }}
                                 />
                               ))}
                           </LineChart>
                         </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-muted-foreground italic">
+                          No historical data available for this worker
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Recent Forms Scroll */}
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Recent Submissions</h4>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {selectedUser.formSubmissions.slice(0, 4).map((form) => (
+                          <div 
+                            key={form.id} 
+                            className="p-4 rounded-xl border bg-background hover:border-primary/50 transition-colors cursor-pointer group"
+                            onClick={() => setExpandedFormId(expandedFormId === form.id ? null : form.id)}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-xs font-black">{formatDate(form.date)}</span>
+                              <RiskBadge 
+                                level={
+                                  form.riskScore <= 30 ? "low" : 
+                                  form.riskScore <= 60 ? "medium" : "high"
+                                } 
+                                size="sm" 
+                              />
+                            </div>
+                            <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground">
+                              <span className="flex items-center gap-1"><HardHat className="h-3 w-3" /> {form.ppeComplianceRate}%</span>
+                              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {form.shiftDuration}h</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                        No form data available for this user
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
-  );
-}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </DashboardLayout>
+    );
+  }
+

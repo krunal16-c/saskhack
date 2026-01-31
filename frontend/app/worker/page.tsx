@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatCard } from "@/components/StatCard";
@@ -101,259 +102,301 @@ export default function WorkerDashboard() {
   const stats = dashboardData?.stats ?? { formsThisWeek: 0, avgRisk7d: 0, incidentsLast90d: 0 };
 
   const unreadAlerts = alerts.filter((a) => !a.is_read).length;
-  const now = new Date();
-  const greeting = now.getHours() < 12 ? "morning" : now.getHours() < 18 ? "afternoon" : "evening";
+    const now = new Date();
+    const greeting = now.getHours() < 12 ? "Good Morning" : now.getHours() < 18 ? "Good Afternoon" : "Good Evening";
 
-  return (
-    <DashboardLayout>
-      <div className="space-y-6 animate-in fade-in duration-500">
-        {/* Welcome header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">
-              Good {greeting}, {profile?.full_name?.split(" ")[0] || "there"}!
-            </h1>
-            <p className="text-muted-foreground">
-              {now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => fetchDashboard(true)}
-              disabled={refreshing}
-              title="Refresh dashboard"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            </Button>
-
-            {!todayFormSubmitted ? (
-              <Button onClick={() => router.push("/worker/form")} size="lg" className="gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Submit Daily Form
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2 text-emerald-600 bg-emerald-500/10 px-4 py-2 rounded-lg">
-                <CheckCircle className="h-5 w-5" />
-                <span className="font-medium">Today&apos;s form submitted</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Risk status card */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              <RiskScoreGauge score={latestRisk.total_score} size="lg" />
-
-              <div className="flex-1 space-y-4 text-center md:text-left">
-                <div>
-                  <h2 className="text-xl font-semibold">Your Current Risk Status</h2>
-                  <p className="text-muted-foreground">
-                    Based on your recent form submissions and exposure history
-                  </p>
+    return (
+      <DashboardLayout>
+        <div className="space-y-8 pb-10">
+          {/* Hero Section with Greeting */}
+          <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-10 text-primary-foreground md:px-10 md:py-12 shadow-xl">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium backdrop-blur-md">
+                  <Calendar className="h-3 w-3" />
+                  {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
                 </div>
-
-                <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">{stats.formsThisWeek}</p>
-                    <p className="text-sm text-muted-foreground">Forms (7 days)</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">{unreadAlerts}</p>
-                    <p className="text-sm text-muted-foreground">Unread Alerts</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">{todayFormSubmitted ? "Yes" : "No"}</p>
-                    <p className="text-sm text-muted-foreground">Today&apos;s Form</p>
-                  </div>
-                </div>
+                <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+                  {greeting}, {profile?.full_name?.split(" ")[0] || "User"}!
+                </h1>
+                <p className="max-w-md text-primary-foreground/80 text-lg">
+                  {todayFormSubmitted 
+                    ? "Great job! You've already submitted your safety check for today. Stay safe out there."
+                    : "Your safety is our priority. Please take a moment to complete your daily safety check-in."
+                  }
+                </p>
               </div>
 
-              <div className="hidden lg:block w-px h-32 bg-border" />
+              <div className="flex flex-col sm:flex-row gap-3">
+                {!todayFormSubmitted ? (
+                  <Button 
+                    onClick={() => router.push("/worker/form")} 
+                    size="lg" 
+                    className="bg-white text-primary hover:bg-white/90 shadow-lg group"
+                  >
+                    <ClipboardList className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                    Complete Daily Check-in
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline"
+                    onClick={() => router.push("/worker/form")} 
+                    size="lg" 
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Update Check-in
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  onClick={() => router.push("/worker/alerts")}
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 relative"
+                >
+                  <AlertTriangle className="mr-2 h-5 w-5" />
+                  View Alerts
+                  {unreadAlerts > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-primary">
+                      {unreadAlerts}
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Background decorative elements */}
+            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute -bottom-20 left-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+          </div>
 
-              <div className="space-y-3">
-                <h3 className="font-medium text-muted-foreground">Quick Actions</h3>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    className="justify-start"
-                    onClick={() => router.push("/worker/form")}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Main Risk Status */}
+            <Card className="lg:col-span-2 overflow-hidden border-none shadow-md">
+              <CardHeader className="pb-2 border-b bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl">Safety Wellness Score</CardTitle>
+                    <CardDescription>Comprehensive risk assessment overview</CardDescription>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => fetchDashboard(true)}
+                    disabled={refreshing}
                   >
-                    <ClipboardList className="mr-2 h-4 w-4" />
-                    {todayFormSubmitted ? "Update Form" : "Submit Form"}
+                    <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="justify-start"
-                    onClick={() => router.push("/worker/alerts")}
-                  >
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    View Alerts
-                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8">
+                <div className="flex flex-col md:flex-row items-center gap-10">
+                  <div className="relative group">
+                    <RiskScoreGauge score={latestRisk.total_score} size="lg" />
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                      <RiskBadge level={latestRisk.risk_level} size="sm" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-muted/50 border border-border/50">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Weekly Forms</p>
+                        <div className="flex items-end gap-2">
+                          <span className="text-3xl font-bold">{stats.formsThisWeek}</span>
+                          <span className="text-xs text-muted-foreground mb-1">/ 7 days</span>
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-muted/50 border border-border/50">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Avg Risk</p>
+                        <div className="flex items-end gap-2">
+                          <span className="text-3xl font-bold">{stats.avgRisk7d}</span>
+                          <TrendingUp className={cn("h-4 w-4 mb-2", stats.avgRisk7d > 50 ? "text-destructive" : "text-emerald-500")} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">Streak Status</span>
+                        <span className="text-emerald-600 font-bold">{consecutiveSafeDays} Day Safe Streak</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 transition-all duration-1000" 
+                          style={{ width: `${Math.min((consecutiveSafeDays / 14) * 100, 100)}%` }} 
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Keep it up! 14 days is a major milestone.</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+              <StatCard
+                title="Active Alerts"
+                value={unreadAlerts}
+                icon={AlertTriangle}
+                variant={unreadAlerts > 0 ? "warning" : "success"}
+                className="shadow-sm border-none bg-card hover:bg-muted/50 transition-colors"
+              />
+              <StatCard
+                title="Risk History"
+                value={stats.avgRisk7d}
+                subtitle="Last 7 days avg"
+                icon={TrendingUp}
+                variant={stats.avgRisk7d < 40 ? "success" : "warning"}
+                className="shadow-sm border-none bg-card hover:bg-muted/50 transition-colors"
+              />
+              <div className="p-6 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg">
+                <div className="flex items-start justify-between">
+                  <div className="p-2 rounded-lg bg-white/20">
+                    <Shield className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full">New</span>
+                </div>
+                <div className="mt-4">
+                  <h4 className="font-bold">Safety Guide</h4>
+                  <p className="text-xs text-white/80 mt-1">Review updated PPE requirements for Zone B.</p>
+                  <Button variant="link" className="text-white p-0 h-auto mt-2 text-xs font-bold underline">Learn more</Button>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Stats row */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Current Risk Score"
-            value={latestRisk.total_score}
-            icon={Shield}
-            variant={
-              latestRisk.total_score <= 30
-                ? "success"
-                : latestRisk.total_score <= 60
-                ? "warning"
-                : "danger"
-            }
-          />
-          <StatCard
-            title="Avg Risk (7 days)"
-            value={stats.avgRisk7d}
-            subtitle="average score"
-            icon={TrendingUp}
-            variant={
-              stats.avgRisk7d <= 30
-                ? "success"
-                : stats.avgRisk7d <= 60
-                ? "warning"
-                : "danger"
-            }
-          />
-          <StatCard
-            title="Active Alerts"
-            value={unreadAlerts}
-            icon={AlertTriangle}
-            variant={unreadAlerts > 0 ? "warning" : "success"}
-          />
-          <StatCard
-            title="Consecutive Safe Days"
-            value={consecutiveSafeDays}
-            icon={CheckCircle}
-            variant="success"
-          />
-        </div>
-
-        {/* Recent activity */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Recent Forms */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Form Submissions</CardTitle>
-              <CardDescription>Your last 7 daily safety forms</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {recentForms.length > 0 ? (
-                  recentForms.map((form) => (
-                    <div
-                      key={form.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                          <Calendar className="h-5 w-5 text-primary" />
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Timeline View for Forms */}
+            <Card className="border-none shadow-md overflow-hidden">
+              <CardHeader className="bg-muted/30 pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Activity Timeline</CardTitle>
+                    <CardDescription>Your recent safety contributions</CardDescription>
+                  </div>
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+                  {recentForms.length > 0 ? (
+                    recentForms.map((form, index) => (
+                      <div key={form.id} className="relative flex items-center justify-between group">
+                        <div className="flex items-center gap-6">
+                          <div className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-8 ring-background transition-colors group-hover:scale-110",
+                            form.risk_score <= 30 ? "bg-emerald-100 text-emerald-600" : 
+                            form.risk_score <= 60 ? "bg-amber-100 text-amber-600" : "bg-destructive/10 text-destructive"
+                          )}>
+                            <CheckCircle className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">
+                              {new Date(form.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Submitted at {new Date(form.submitted_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">
-                            {new Date(form.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Risk Score: {form.risk_score} • Submitted at {new Date(form.submitted_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                          </p>
+                        <div className="text-right">
+                          <RiskBadge 
+                            level={
+                              form.risk_score <= 30 ? "low" : 
+                              form.risk_score <= 60 ? "medium" : 
+                              form.risk_score <= 85 ? "high" : "critical"
+                            } 
+                            size="sm" 
+                          />
+                          <p className="text-[10px] font-medium text-muted-foreground mt-1">Score: {form.risk_score}</p>
                         </div>
                       </div>
-                      <RiskBadge
-                        level={
-                          form.risk_score <= 30
-                            ? "low"
-                            : form.risk_score <= 60
-                            ? "medium"
-                            : form.risk_score <= 80
-                            ? "high"
-                            : "critical"
-                        }
-                        size="sm"
-                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-10">
+                      <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                        <ClipboardList className="h-8 w-8 text-muted-foreground opacity-20" />
+                      </div>
+                      <p className="text-muted-foreground font-medium">No activity history yet.</p>
+                      <Button variant="link" onClick={() => router.push("/worker/form")} className="mt-2">Start your first check-in</Button>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No forms submitted yet</p>
-                    <Button
-                      variant="link"
-                      onClick={() => router.push("/worker/form")}
-                      className="mt-2"
-                    >
-                      Submit your first form
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Alerts & Notifications */}
+            <Card className="border-none shadow-md overflow-hidden">
+              <CardHeader className="bg-muted/30 pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Priority Notifications</CardTitle>
+                    <CardDescription>Critical safety updates and news</CardDescription>
+                  </div>
+                  <AlertTriangle className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {alerts.length > 0 ? (
+                    alerts.map((alert) => (
+                      <div
+                        key={alert.id}
+                        className={cn(
+                          "flex items-start gap-4 p-5 hover:bg-muted/30 transition-colors",
+                          !alert.is_read && "bg-primary/5"
+                        )}
+                      >
+                        <div className={cn(
+                          "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                          alert.severity === "critical" ? "bg-destructive/10 text-destructive" :
+                          alert.severity === "high" ? "bg-orange-100 text-orange-600" : "bg-amber-100 text-amber-600"
+                        )}>
+                          <AlertTriangle className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-semibold text-sm truncate pr-2">{alert.title}</h4>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {new Date(alert.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                            {alert.message}
+                          </p>
+                          {!alert.is_read && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">New</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-20 px-6">
+                      <div className="mx-auto w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-4">
+                        <CheckCircle className="h-8 w-8 text-emerald-500 opacity-40" />
+                      </div>
+                      <h4 className="font-semibold">All Clear!</h4>
+                      <p className="text-sm text-muted-foreground mt-1">No active alerts at this time.</p>
+                    </div>
+                  )}
+                </div>
+                {alerts.length > 0 && (
+                  <div className="p-4 border-t bg-muted/20 text-center">
+                    <Button variant="ghost" size="sm" onClick={() => router.push("/worker/alerts")} className="text-xs font-semibold text-muted-foreground hover:text-primary">
+                      View all notifications
                     </Button>
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Alerts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Alerts</CardTitle>
-              <CardDescription>Safety notifications and warnings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {alerts.length > 0 ? (
-                  alerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg ${
-                        alert.is_read ? "bg-muted/30" : "bg-muted/50 border-l-2 border-amber-500"
-                      }`}
-                    >
-                      <AlertTriangle
-                        className={`h-5 w-5 mt-0.5 ${
-                          alert.severity === "critical"
-                            ? "text-destructive"
-                            : alert.severity === "high"
-                            ? "text-orange-500"
-                            : alert.severity === "medium"
-                            ? "text-amber-500"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">{alert.title}</p>
-                          <RiskBadge level={alert.severity} size="sm" showIcon={false} />
-                        </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {alert.message}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(alert.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50 text-emerald-500" />
-                    <p>No alerts - you&apos;re all clear!</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
-    </DashboardLayout>
-  );
-}
+      </DashboardLayout>
+    );
+  }
+
