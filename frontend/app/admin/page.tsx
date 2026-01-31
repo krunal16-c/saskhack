@@ -855,7 +855,7 @@ export default function AdminDashboard() {
                             border: "1px solid hsl(var(--border))",
                             borderRadius: "8px",
                           }}
-                          formatter={(value: number) => [`${value}%`, "Compliance"]}
+                          formatter={(value: number | undefined) => [`${value != null ? `${value}%` : "—"}`, "Compliance"]}
                         />
                         <Area
                           type="monotone"
