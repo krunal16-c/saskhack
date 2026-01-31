@@ -14,22 +14,22 @@ export function RiskBadge({ level, showIcon = true, size = "md" }: RiskBadgeProp
     low: {
       label: "Low",
       icon: CheckCircle,
-      className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+      className: "bg-success/10 text-success border-success/20",
     },
     medium: {
       label: "Medium",
       icon: AlertCircle,
-      className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+      className: "bg-warning/10 text-warning border-warning/20",
     },
     high: {
       label: "High",
       icon: AlertTriangle,
-      className: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+      className: "bg-warning/20 text-warning border-warning/30",
     },
     critical: {
       label: "Critical",
       icon: XCircle,
-      className: "bg-red-500/10 text-red-600 border-red-500/20",
+      className: "bg-destructive/10 text-destructive border-destructive/20",
     },
   };
 

@@ -23,21 +23,22 @@ export function StatCard({
   variant = "default",
   className,
 }: StatCardProps) {
-  const variantStyles = {
-    default: "bg-card border-border",
-    success: "bg-emerald-500/5 border-emerald-500/20",
-    warning: "bg-amber-500/5 border-amber-500/20",
-    danger: "bg-red-500/5 border-red-500/20",
-    info: "bg-blue-500/5 border-blue-500/20",
-  };
+    const variantStyles = {
+      default: "bg-card border-border",
+      success: "bg-success/5 border-success/20",
+      warning: "bg-warning/5 border-warning/20",
+      danger: "bg-destructive/5 border-destructive/20",
+      info: "bg-info/5 border-info/20",
+    };
+  
+    const iconStyles = {
+      default: "bg-primary/10 text-primary",
+      success: "bg-success/10 text-success",
+      warning: "bg-warning/10 text-warning",
+      danger: "bg-destructive/10 text-destructive",
+      info: "bg-info/10 text-info",
+    };
 
-  const iconStyles = {
-    default: "bg-primary/10 text-primary",
-    success: "bg-emerald-500/10 text-emerald-600",
-    warning: "bg-amber-500/10 text-amber-600",
-    danger: "bg-red-500/10 text-red-600",
-    info: "bg-blue-500/10 text-blue-600",
-  };
 
   return (
     <div

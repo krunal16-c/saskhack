@@ -200,33 +200,34 @@ export default function WorkerDashboard() {
 
                   <div className="flex-1 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-2xl bg-muted/50 border border-border/50">
-                        <p className="text-sm font-medium text-muted-foreground mb-1">Weekly Forms</p>
-                        <div className="flex items-end gap-2">
-                          <span className="text-3xl font-bold">{stats.formsThisWeek}</span>
-                          <span className="text-xs text-muted-foreground mb-1">/ 7 days</span>
+                        <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
+                          <p className="text-sm font-medium text-muted-foreground mb-1">Weekly Forms</p>
+                          <div className="flex items-end gap-2">
+                            <span className="text-3xl font-bold">{stats.formsThisWeek}</span>
+                            <span className="text-xs text-muted-foreground mb-1">/ 7 days</span>
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
+                          <p className="text-sm font-medium text-muted-foreground mb-1">Avg Risk</p>
+                          <div className="flex items-end gap-2">
+                            <span className="text-3xl font-bold">{stats.avgRisk7d}</span>
+                            <TrendingUp className={cn("h-4 w-4 mb-2", stats.avgRisk7d > 50 ? "text-destructive" : "text-success")} />
+                          </div>
                         </div>
                       </div>
-                      <div className="p-4 rounded-2xl bg-muted/50 border border-border/50">
-                        <p className="text-sm font-medium text-muted-foreground mb-1">Avg Risk</p>
-                        <div className="flex items-end gap-2">
-                          <span className="text-3xl font-bold">{stats.avgRisk7d}</span>
-                          <TrendingUp className={cn("h-4 w-4 mb-2", stats.avgRisk7d > 50 ? "text-destructive" : "text-emerald-500")} />
+  
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">Streak Status</span>
+                          <span className="text-success font-bold">{consecutiveSafeDays} Day Safe Streak</span>
                         </div>
-                      </div>
-                    </div>
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                          <div 
+                            className="h-full bg-success transition-all duration-1000" 
+                            style={{ width: `${Math.min((consecutiveSafeDays / 14) * 100, 100)}%` }} 
+                          />
+                        </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">Streak Status</span>
-                        <span className="text-emerald-600 font-bold">{consecutiveSafeDays} Day Safe Streak</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                        <div 
-                          className="h-full bg-emerald-500 transition-all duration-1000" 
-                          style={{ width: `${Math.min((consecutiveSafeDays / 14) * 100, 100)}%` }} 
-                        />
-                      </div>
                       <p className="text-xs text-muted-foreground">Keep it up! 14 days is a major milestone.</p>
                     </div>
                   </div>
@@ -251,19 +252,20 @@ export default function WorkerDashboard() {
                 variant={stats.avgRisk7d < 40 ? "success" : "warning"}
                 className="shadow-sm border-none bg-card hover:bg-muted/50 transition-colors"
               />
-              <div className="p-6 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg">
-                <div className="flex items-start justify-between">
-                  <div className="p-2 rounded-lg bg-white/20">
-                    <Shield className="h-5 w-5" />
+                <div className="p-6 rounded-xl bg-gradient-to-br from-primary to-info text-primary-foreground shadow-lg border border-primary/20">
+                  <div className="flex items-start justify-between">
+                    <div className="p-2 rounded-lg bg-white/20">
+                      <Shield className="h-5 w-5" />
+                    </div>
+                    <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full">New</span>
                   </div>
-                  <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full">New</span>
+                  <div className="mt-4">
+                    <h4 className="font-bold">Safety Guide</h4>
+                    <p className="text-xs text-primary-foreground/80 mt-1">Review updated PPE requirements for Zone B.</p>
+                    <Button variant="link" className="text-primary-foreground p-0 h-auto mt-2 text-xs font-bold underline">Learn more</Button>
+                  </div>
                 </div>
-                <div className="mt-4">
-                  <h4 className="font-bold">Safety Guide</h4>
-                  <p className="text-xs text-white/80 mt-1">Review updated PPE requirements for Zone B.</p>
-                  <Button variant="link" className="text-white p-0 h-auto mt-2 text-xs font-bold underline">Learn more</Button>
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -285,13 +287,14 @@ export default function WorkerDashboard() {
                     recentForms.map((form, index) => (
                       <div key={form.id} className="relative flex items-center justify-between group">
                         <div className="flex items-center gap-6">
-                          <div className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-8 ring-background transition-colors group-hover:scale-110",
-                            form.risk_score <= 30 ? "bg-emerald-100 text-emerald-600" : 
-                            form.risk_score <= 60 ? "bg-amber-100 text-amber-600" : "bg-destructive/10 text-destructive"
-                          )}>
-                            <CheckCircle className="h-5 w-5" />
-                          </div>
+                            <div className={cn(
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-8 ring-background transition-colors group-hover:scale-110",
+                              form.risk_score <= 30 ? "bg-success/10 text-success" : 
+                              form.risk_score <= 60 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
+                            )}>
+                              <CheckCircle className="h-5 w-5" />
+                            </div>
+
                           <div>
                             <p className="font-semibold text-sm">
                               {new Date(form.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
@@ -349,13 +352,14 @@ export default function WorkerDashboard() {
                           !alert.is_read && "bg-primary/5"
                         )}
                       >
-                        <div className={cn(
-                          "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                          alert.severity === "critical" ? "bg-destructive/10 text-destructive" :
-                          alert.severity === "high" ? "bg-orange-100 text-orange-600" : "bg-amber-100 text-amber-600"
-                        )}>
-                          <AlertTriangle className="h-4 w-4" />
-                        </div>
+                          <div className={cn(
+                            "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                            alert.severity === "critical" ? "bg-destructive/10 text-destructive" :
+                            alert.severity === "high" ? "bg-warning/20 text-warning" : "bg-warning/10 text-warning"
+                          )}>
+                            <AlertTriangle className="h-4 w-4" />
+                          </div>
+
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <h4 className="font-semibold text-sm truncate pr-2">{alert.title}</h4>

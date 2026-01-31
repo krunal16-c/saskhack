@@ -374,13 +374,14 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex flex-col items-end px-4 py-1 border-r">
-                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Sync Status</span>
-                <span className="text-sm font-bold text-emerald-500 flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live
-                </span>
-              </div>
+                <div className="hidden md:flex flex-col items-end px-4 py-1 border-r">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Sync Status</span>
+                  <span className="text-sm font-bold text-success flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+                    Live
+                  </span>
+                </div>
+
               <Button
                 variant="outline"
                 size="lg"
@@ -506,27 +507,28 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Compliance Health</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="space-y-1">
-                      <p className="text-3xl font-bold">{metrics.complianceRate}%</p>
-                      <p className="text-xs text-muted-foreground font-medium">Global PPE Compliance</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="space-y-1">
+                        <p className="text-3xl font-bold">{metrics.complianceRate}%</p>
+                        <p className="text-xs text-muted-foreground font-medium">Global PPE Compliance</p>
+                      </div>
+                      <div className={cn(
+                        "p-3 rounded-2xl",
+                        metrics.complianceRate >= 85 ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                      )}>
+                        <HardHat className="h-8 w-8" />
+                      </div>
                     </div>
-                    <div className={cn(
-                      "p-3 rounded-2xl",
-                      metrics.complianceRate >= 85 ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
-                    )}>
-                      <HardHat className="h-8 w-8" />
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={cn(
+                          "h-full transition-all duration-1000",
+                          metrics.complianceRate >= 85 ? "bg-success" : "bg-warning"
+                        )}
+                        style={{ width: `${metrics.complianceRate}%` }}
+                      />
                     </div>
-                  </div>
-                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className={cn(
-                        "h-full transition-all duration-1000",
-                        metrics.complianceRate >= 85 ? "bg-emerald-500" : "bg-amber-500"
-                      )}
-                      style={{ width: `${metrics.complianceRate}%` }}
-                    />
-                  </div>
+
                 </CardContent>
               </Card>
 
@@ -542,17 +544,18 @@ export default function AdminDashboard() {
                           <span className="capitalize">{level}</span>
                           <span>{count} workers</span>
                         </div>
-                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={cn(
-                              "h-full",
-                              level === "low" ? "bg-emerald-500" :
-                              level === "medium" ? "bg-amber-500" :
-                              level === "high" ? "bg-orange-500" : "bg-red-500"
-                            )}
-                            style={{ width: `${(count / Math.max(metrics.totalUsers, 1)) * 100}%` }}
-                          />
-                        </div>
+                          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full",
+                                level === "low" ? "bg-success" :
+                                level === "medium" ? "bg-warning" :
+                                level === "high" ? "bg-warning/80" : "bg-destructive"
+                              )}
+                              style={{ width: `${(count / Math.max(metrics.totalUsers, 1)) * 100}%` }}
+                            />
+                          </div>
+
                       </div>
                     ))}
                   </div>
@@ -715,30 +718,31 @@ export default function AdminDashboard() {
                               <span className="text-[10px] font-bold text-muted-foreground mt-1">INDEX: {user.latestRiskScore}</span>
                             </div>
                           </td>
-                          <td className="py-4 px-6 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <div className="w-12 h-1 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className={cn(
-                                    "h-full",
-                                    user.avgPpeCompliance >= 80 ? "bg-emerald-500" :
-                                    user.avgPpeCompliance >= 50 ? "bg-amber-500" : "bg-red-500"
-                                  )}
-                                  style={{ width: `${user.avgPpeCompliance}%` }}
-                                />
+                            <td className="py-4 px-6 text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="w-12 h-1 bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className={cn(
+                                      "h-full",
+                                      user.avgPpeCompliance >= 80 ? "bg-success" :
+                                      user.avgPpeCompliance >= 50 ? "bg-warning" : "bg-destructive"
+                                    )}
+                                    style={{ width: `${user.avgPpeCompliance}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-bold">{user.avgPpeCompliance}%</span>
                               </div>
-                              <span className="text-xs font-bold">{user.avgPpeCompliance}%</span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6 text-center">
-                            {user.hasSubmittedToday ? (
-                              <div className="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
-                                <CheckCircle className="h-4 w-4 text-emerald-500" />
-                              </div>
-                            ) : (
-                              <span className="text-[10px] font-bold text-muted-foreground/50 uppercase">Pending</span>
-                            )}
-                          </td>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              {user.hasSubmittedToday ? (
+                                <div className="h-6 w-6 rounded-full bg-success/10 flex items-center justify-center mx-auto">
+                                  <CheckCircle className="h-4 w-4 text-success" />
+                                </div>
+                              ) : (
+                                <span className="text-[10px] font-bold text-muted-foreground/50 uppercase">Pending</span>
+                              )}
+                            </td>
+
                           <td className="py-4 px-6 text-right">
                             <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity font-bold text-xs uppercase">
                               Inspect <ChevronDown className="ml-1 h-3 w-3" />
@@ -793,10 +797,11 @@ export default function AdminDashboard() {
                         <p className="text-[10px] font-bold text-muted-foreground uppercase">Risk Rating</p>
                         <p className="text-2xl font-black text-primary">{selectedUser.latestRiskScore}</p>
                       </div>
-                      <div className="p-4 rounded-2xl bg-background shadow-sm border space-y-1">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Compliance</p>
-                        <p className="text-2xl font-black text-emerald-500">{selectedUser.avgPpeCompliance}%</p>
-                      </div>
+                        <div className="p-4 rounded-2xl bg-background shadow-sm border space-y-1">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Compliance</p>
+                          <p className="text-2xl font-black text-success">{selectedUser.avgPpeCompliance}%</p>
+                        </div>
+
                       <div className="p-4 rounded-2xl bg-background shadow-sm border space-y-1">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase">Form Activity</p>
                         <p className="text-2xl font-black">{selectedUser.formsThisWeek}</p>
