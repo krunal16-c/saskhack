@@ -363,74 +363,74 @@ export default function AdminDashboard() {
 
     return (
       <DashboardLayout>
-        <div className="space-y-8 pb-10">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-3xl font-bold tracking-tight">System Overview</h1>
-              <p className="text-muted-foreground flex items-center gap-2">
-                <Shield className="h-4 w-4 text-primary" />
-                Monitoring {metrics.totalUsers} workers across {departments.length} departments
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-                <div className="hidden md:flex flex-col items-end px-4 py-1 border-r">
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Sync Status</span>
-                  <span className="text-sm font-bold text-success flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-                    Live
-                  </span>
-                </div>
+          <div className="space-y-10 pb-16 px-4 md:px-6">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-card/50 p-6 rounded-3xl border shadow-sm">
+              <div className="space-y-1">
+                <h1 className="text-4xl font-black tracking-tight text-primary">System Command</h1>
+                <p className="text-muted-foreground flex items-center gap-2 font-medium">
+                  <Shield className="h-4 w-4 text-success" />
+                  Overseeing {metrics.totalUsers} personnel • {departments.length} units active
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                  <div className="hidden lg:flex flex-col items-end px-4 border-r pr-6">
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Network Health</span>
+                    <span className="text-sm font-black text-success flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_rgba(var(--success),0.5)]" />
+                      Synchronized
+                    </span>
+                  </div>
 
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => fetchData(true)}
-                disabled={refreshing}
-                className="shadow-sm"
-              >
-                <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
-                Refresh Data
-              </Button>
+                <Button
+                  variant="default"
+                  size="lg"
+                  onClick={() => fetchData(true)}
+                  disabled={refreshing}
+                  className="shadow-xl shadow-primary/20 rounded-2xl px-8 h-12 font-bold transition-all hover:scale-105"
+                >
+                  <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
+                  Refresh Fleet Data
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {/* Key Metrics Grid */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Active Workforce"
-              value={metrics.activeUsers}
-              subtitle={`${metrics.totalUsers} total registered`}
-              icon={Users}
-              className="border-none shadow-md bg-white dark:bg-zinc-950"
-            />
-            <StatCard
-              title="Today's Check-ins"
-              value={metrics.totalFormsToday}
-              subtitle={`${metrics.totalFormsThisWeek} this week`}
-              icon={ClipboardList}
-              className="border-none shadow-md bg-white dark:bg-zinc-950"
-            />
-            <StatCard
-              title="Global Risk Index"
-              value={metrics.avgRiskWeek}
-              subtitle="7-day rolling average"
-              icon={Shield}
-              variant={
-                metrics.avgRiskWeek <= 30 ? "success" : 
-                metrics.avgRiskWeek <= 60 ? "warning" : "danger"
-              }
-              className="border-none shadow-md bg-white dark:bg-zinc-950"
-            />
-            <StatCard
-              title="Safety Incidents"
-              value={metrics.incidentsThisMonth}
-              subtitle="Last 30 days"
-              icon={AlertTriangle}
-              variant={metrics.incidentsThisMonth === 0 ? "success" : "danger"}
-              className="border-none shadow-md bg-white dark:bg-zinc-950"
-            />
-          </div>
+            {/* Critical Metrics Grid */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                title="Active Workforce"
+                value={metrics.activeUsers}
+                subtitle={`${metrics.totalUsers} total registered`}
+                icon={Users}
+                className="border shadow-lg hover:shadow-primary/5 transition-all duration-300"
+              />
+              <StatCard
+                title="Today's Check-ins"
+                value={metrics.totalFormsToday}
+                subtitle={`${metrics.totalFormsThisWeek} this week`}
+                icon={ClipboardList}
+                className="border shadow-lg hover:shadow-primary/5 transition-all duration-300"
+              />
+              <StatCard
+                title="Global Risk Index"
+                value={metrics.avgRiskWeek}
+                subtitle="7-day rolling average"
+                icon={Shield}
+                variant={
+                  metrics.avgRiskWeek <= 30 ? "success" : 
+                  metrics.avgRiskWeek <= 60 ? "warning" : "danger"
+                }
+                className="border shadow-lg hover:shadow-primary/5 transition-all duration-300"
+              />
+              <StatCard
+                title="Safety Incidents"
+                value={metrics.incidentsThisMonth}
+                subtitle="Last 30 days"
+                icon={AlertTriangle}
+                variant={metrics.incidentsThisMonth === 0 ? "success" : "danger"}
+                className="border shadow-lg hover:shadow-primary/5 transition-all duration-300"
+              />
+            </div>
 
           {/* Advanced Analytics Grid */}
           <div className="grid gap-6 lg:grid-cols-3">
@@ -485,15 +485,16 @@ export default function AdminDashboard() {
                         strokeWidth={3}
                         fill="url(#riskGradient)"
                       />
-                      <Line
-                        type="monotone"
-                        dataKey="formCount"
-                        name="Submissions"
-                        stroke="#8b5cf6"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff" }}
-                        activeDot={{ r: 6, strokeWidth: 0 }}
-                      />
+                        <Line
+                          type="monotone"
+                          dataKey="formCount"
+                          name="Submissions"
+                          stroke="hsl(var(--info))"
+                          strokeWidth={3}
+                          dot={{ r: 4, fill: "hsl(var(--info))", strokeWidth: 2, stroke: "hsl(var(--card))" }}
+                          activeDot={{ r: 6, strokeWidth: 0 }}
+                        />
+
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -544,17 +545,18 @@ export default function AdminDashboard() {
                           <span className="capitalize">{level}</span>
                           <span>{count} workers</span>
                         </div>
-                          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className={cn(
-                                "h-full",
-                                level === "low" ? "bg-success" :
-                                level === "medium" ? "bg-warning" :
-                                level === "high" ? "bg-warning/80" : "bg-destructive"
-                              )}
-                              style={{ width: `${(count / Math.max(metrics.totalUsers, 1)) * 100}%` }}
-                            />
-                          </div>
+                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className={cn(
+                                  "h-full transition-all duration-500",
+                                  level === "low" ? "bg-success" :
+                                  level === "medium" ? "bg-warning" :
+                                  level === "high" ? "bg-warning/80" : "bg-destructive shadow-[0_0_8px_rgba(var(--destructive),0.4)]"
+                                )}
+                                style={{ width: `${(count / Math.max(metrics.totalUsers, 1)) * 100}%` }}
+                              />
+                            </div>
+
 
                       </div>
                     ))}
