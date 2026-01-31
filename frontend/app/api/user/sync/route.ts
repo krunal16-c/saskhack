@@ -10,15 +10,6 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user already exists in database
-    const existingUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (existingUser) {
-      return NextResponse.json({ user: existingUser, created: false });
-    }
-
     // Get user details from Clerk
     const clerkUser = await currentUser();
 
@@ -26,9 +17,16 @@ export async function POST() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Create new user in database
-    const newUser = await prisma.user.create({
-      data: {
+    // Use upsert to handle race conditions
+    const user = await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: {
+        // Update email and image if changed
+        email: clerkUser.emailAddresses[0]?.emailAddress || "",
+        name: clerkUser.fullName || clerkUser.firstName || null,
+        imageUrl: clerkUser.imageUrl || null,
+      },
+      create: {
         clerkId: userId,
         email: clerkUser.emailAddresses[0]?.emailAddress || "",
         name: clerkUser.fullName || clerkUser.firstName || null,
@@ -36,7 +34,7 @@ export async function POST() {
       },
     });
 
-    return NextResponse.json({ user: newUser, created: true });
+    return NextResponse.json({ user, created: true });
   } catch (error) {
     console.error("Error syncing user:", error);
     return NextResponse.json(

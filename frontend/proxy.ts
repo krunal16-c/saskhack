@@ -1,6 +1,26 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
-export default clerkMiddleware();
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/webhook(.*)",
+]);
+
+export default clerkMiddleware(async (auth, request) => {
+  const { userId } = await auth();
+  
+  // If user is signed in and trying to access the home page, redirect to dashboard
+  if (userId && request.nextUrl.pathname === "/") {
+    return NextResponse.redirect(new URL("/worker", request.url));
+  }
+  
+  // Protect non-public routes
+  if (!isPublicRoute(request)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [
