@@ -102,37 +102,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Gender encoding
-    const genderEncoded = user.gender === "male" ? 0 : user.gender === "female" ? 1 : 2;
+    // Gender encoding: male=1, female=0, other=2
+    const genderEncoded = user.gender === "male" ? 1 : user.gender === "female" ? 0 : 2;
 
-    // Build features object
+    // Build features object matching the ML model input structure
     const features = {
-      // Personal/Worker history
-      age: user.age || 30,
-      years_experience: user.yearsExperience || 0,
-      gender_encoded: genderEncoded,
-      
-      // Time-based
-      day_of_week: dayOfWeek,
-      month: month,
-      
-      // Today's form data
+      // Today's shift data
       shift_duration: formData.shiftDuration,
       fatigue_level: formData.fatigueLevel,
       ppe_compliance_rate: formData.ppeComplianceRate,
-      total_hazard_exposure_hours: formData.totalHazardExposureHours,
-      
-      // Calculated from history
+      job_type: user.jobType || "Unknown",
+      weather_condition: formData.weatherCondition || "Clear",
+      day_of_week: dayOfWeek,
+      month: month,
+
+      // Personal/Worker profile
+      age: user.age || 30,
+      years_experience: user.yearsExperience || 0,
+      gender_encoded: genderEncoded,
+
+      // Risk and incident history
+      daily_risk_score: Math.round(formData.ruleBasedScore * 100) / 100,
+      days_since_last_incident: daysSinceLastIncident,
+      incidents_last_90d: incidentsLast90d,
       consecutive_days_worked: consecutiveDaysWorked,
-      daily_risk_score: formData.ruleBasedScore,
-      avg_risk_7d: Math.round(avgRisk7d * 100) / 100,
-      avg_risk_30d: Math.round(avgRisk30d * 100) / 100,
-      max_risk_7d: maxRisk7d,
+
+      // Hazard exposure
+      total_hazard_exposure_hours: formData.totalHazardExposureHours,
       total_hazard_hours_7d: Math.round(totalHazardHours7d * 100) / 100,
       total_hazard_hours_30d: Math.round(totalHazardHours30d * 100) / 100,
+
+      // Historical averages (0-1 scale)
+      avg_risk_7d: Math.round(avgRisk7d * 100) / 100,
+      avg_risk_30d: Math.round(avgRisk30d * 100) / 100,
+      max_risk_7d: Math.round(maxRisk7d * 100) / 100,
       avg_ppe_7d: Math.round(avgPpe7d * 100) / 100,
-      incidents_last_90d: incidentsLast90d,
-      days_since_last_incident: daysSinceLastIncident,
     };
 
     return NextResponse.json({ features });

@@ -36,7 +36,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { age, gender, yearsExperience, jobTitle, department, name } = body;
+    const { age, gender, yearsExperience, jobType, jobTitle, department, name } = body;
 
     const user = await prisma.user.update({
       where: { clerkId: userId },
@@ -45,6 +45,7 @@ export async function PATCH(request: NextRequest) {
         ...(age !== undefined && { age: parseInt(age) || null }),
         ...(gender !== undefined && { gender }),
         ...(yearsExperience !== undefined && { yearsExperience: parseInt(yearsExperience) || 0 }),
+        ...(jobType !== undefined && { jobType }),
         ...(jobTitle !== undefined && { jobTitle }),
         ...(department !== undefined && { department }),
       },

@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
     const {
       date,
       shiftDuration,
+      weatherCondition,
       fatigueLevel,
       ppeItemsRequired,
       ppeItemsUsed,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       0
     );
 
-    // Calculate rule-based score
+    // Calculate rule-based score (0-1 scale)
     const ruleBasedScore = calculateRuleBasedScore({
       fatigueLevel,
       ppeComplianceRate,
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
       },
       update: {
         shiftDuration,
+        weatherCondition,
         fatigueLevel,
         ppeItemsRequired,
         ppeItemsUsed,
@@ -119,6 +121,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         date: new Date(date),
         shiftDuration,
+        weatherCondition,
         fatigueLevel,
         ppeItemsRequired,
         ppeItemsUsed,
@@ -141,7 +144,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to calculate rule-based risk score
+// Helper function to calculate rule-based risk score (returns 0.0 to 1.0)
 function calculateRuleBasedScore(data: {
   fatigueLevel: number;
   ppeComplianceRate: number;
@@ -152,7 +155,7 @@ function calculateRuleBasedScore(data: {
 }): number {
   let score = 0;
 
-  // Hazard base risks
+  // Hazard base risks (on 0-100 scale internally)
   const hazardRisks: Record<string, number> = {
     noise: 15,
     dust: 12,
@@ -183,5 +186,6 @@ function calculateRuleBasedScore(data: {
     score += 20;
   }
 
-  return Math.min(100, Math.round(score));
+  // Convert to 0-1 scale and cap at 1.0
+  return Math.min(1, Math.round(score) / 100);
 }

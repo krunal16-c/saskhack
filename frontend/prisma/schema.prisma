@@ -23,7 +23,8 @@ model User {
   age              Int?
   gender           String?   // "male", "female", "other"
   yearsExperience  Int?      @default(0)
-  jobTitle         String?
+  jobType          String?   // Standardized job type e.g. "SaskPower_Line_Technician"
+  jobTitle         String?   // Display title
   department       String?
   
   // Relationships
@@ -42,6 +43,7 @@ model DailyForm {
   // Form date and shift info
   date              DateTime  @db.Date
   shiftDuration     Float     // hours worked
+  weatherCondition  String?   // "Clear", "Rain", "Snow", "Fog", "Extreme_Heat", "Extreme_Cold"
   
   // Physical condition
   fatigueLevel      Int       // 1-10 scale
@@ -63,7 +65,7 @@ model DailyForm {
   incidentReported     Boolean   @default(false)
   incidentDescription  String?
   
-  // Calculated daily risk score (rule-based)
+  // Calculated daily risk score (rule-based, 0.0 to 1.0 scale)
   ruleBasedScore    Float     @default(0)
   
   // Additional notes

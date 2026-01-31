@@ -19,6 +19,9 @@ import {
   Activity,
   HardHat,
   X,
+  ChevronDown,
+  ChevronUp,
+  BarChart3,
 } from "lucide-react";
 import {
   LineChart,
@@ -112,6 +115,7 @@ export default function AdminDashboard() {
   const [userDetailData, setUserDetailData] = useState<UserDetailData | null>(null);
   const [loadingUserData, setLoadingUserData] = useState(false);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["riskScore", "fatigueLevel"]);
+  const [showOverview, setShowOverview] = useState(false);
 
   const fetchData = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -288,8 +292,40 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* Charts Row 1 - All Line Charts */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        {/* Overview Charts Toggle */}
+        <Card
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => setShowOverview(!showOverview)}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Overview Charts</h3>
+                  <p className="text-sm text-muted-foreground">
+                    View aggregated metrics and trends across all workers
+                  </p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon">
+                {showOverview ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Charts Section - Collapsible */}
+        {showOverview && (
+          <div className="space-y-6 animate-in slide-in-from-top duration-300">
+            {/* Charts Row 1 - All Line Charts */}
+            <div className="grid gap-6 lg:grid-cols-2">
           {/* Daily Risk Trend */}
           <Card>
             <CardHeader>
@@ -518,6 +554,8 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+          </div>
+        )}
 
         {/* Workers Table */}
         <Card>
