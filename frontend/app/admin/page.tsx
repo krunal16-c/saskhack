@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatCard } from "@/components/StatCard";
 import { RiskBadge, RiskLevel } from "@/components/RiskBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Users,
   Shield,
@@ -22,6 +30,10 @@ import {
   ChevronDown,
   ChevronUp,
   BarChart3,
+  Filter,
+  FileText,
+  Clock,
+  Zap,
 } from "lucide-react";
 import {
   LineChart,
@@ -36,6 +48,22 @@ import {
   Legend,
 } from "recharts";
 
+interface FormSubmission {
+  id: string;
+  date: string;
+  shiftDuration: number;
+  fatigueLevel: number;
+  riskScore: number;
+  ppeComplianceRate: number;
+  ppeItemsUsed: number;
+  ppeItemsRequired: number;
+  totalHazardExposureHours: number;
+  hazardExposures: Record<string, number>;
+  symptoms: string[] | null;
+  incidentReported: boolean;
+  incidentDescription: string | null;
+}
+
 interface UserData {
   id: string;
   name: string;
@@ -48,10 +76,12 @@ interface UserData {
   formsThisWeek: number;
   avgRisk7d: number;
   latestRiskScore: number;
+  avgPpeCompliance: number;
   hasSubmittedToday: boolean;
   totalForms: number;
   incidentsReported: number;
   riskLevel: RiskLevel;
+  formSubmissions: FormSubmission[];
 }
 
 interface AdminDashboardData {
@@ -100,6 +130,9 @@ interface UserDetailData {
   availableMetrics: MetricOption[];
 }
 
+type SortField = "latestRiskScore" | "name" | "avgPpeCompliance" | "age" | "yearsExperience" | "formsThisWeek";
+type SortOrder = "asc" | "desc";
+
 export default function AdminDashboard() {
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,6 +142,19 @@ export default function AdminDashboard() {
   const [loadingUserData, setLoadingUserData] = useState(false);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["riskScore", "fatigueLevel"]);
   const [showOverview, setShowOverview] = useState(false);
+  const [expandedFormId, setExpandedFormId] = useState<string | null>(null);
+  
+  // Filter state
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [riskLevelFilter, setRiskLevelFilter] = useState<string>("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [ageMinFilter, setAgeMinFilter] = useState<string>("");
+  const [ageMaxFilter, setAgeMaxFilter] = useState<string>("");
+  const [experienceMinFilter, setExperienceMinFilter] = useState<string>("");
+  const [ppeComplianceFilter, setPpeComplianceFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField>("latestRiskScore");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   const fetchData = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -162,6 +208,129 @@ export default function AdminDashboard() {
     );
   };
 
+  // Get unique departments for filter
+  const departments = useMemo(() => {
+    if (!data) return [];
+    const depts = new Set(data.users.map((u) => u.department).filter(Boolean));
+    return Array.from(depts) as string[];
+  }, [data]);
+
+  // Filter and sort users
+  const filteredUsers = useMemo(() => {
+    if (!data) return [];
+
+    let users = [...data.users];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      users = users.filter(
+        (u) =>
+          u.name.toLowerCase().includes(query) ||
+          u.email.toLowerCase().includes(query) ||
+          u.jobTitle?.toLowerCase().includes(query) ||
+          u.department?.toLowerCase().includes(query)
+      );
+    }
+
+    // Risk level filter
+    if (riskLevelFilter !== "all") {
+      users = users.filter((u) => u.riskLevel === riskLevelFilter);
+    }
+
+    // Department filter
+    if (departmentFilter !== "all") {
+      users = users.filter((u) => u.department === departmentFilter);
+    }
+
+    // Age filter
+    if (ageMinFilter) {
+      const min = parseInt(ageMinFilter);
+      users = users.filter((u) => u.age !== null && u.age >= min);
+    }
+    if (ageMaxFilter) {
+      const max = parseInt(ageMaxFilter);
+      users = users.filter((u) => u.age !== null && u.age <= max);
+    }
+
+    // Experience filter
+    if (experienceMinFilter) {
+      const min = parseInt(experienceMinFilter);
+      users = users.filter((u) => u.yearsExperience !== null && u.yearsExperience >= min);
+    }
+
+    // PPE compliance filter
+    if (ppeComplianceFilter !== "all") {
+      if (ppeComplianceFilter === "high") {
+        users = users.filter((u) => u.avgPpeCompliance >= 80);
+      } else if (ppeComplianceFilter === "medium") {
+        users = users.filter((u) => u.avgPpeCompliance >= 50 && u.avgPpeCompliance < 80);
+      } else if (ppeComplianceFilter === "low") {
+        users = users.filter((u) => u.avgPpeCompliance < 50);
+      }
+    }
+
+    // Sort
+    users.sort((a, b) => {
+      let aVal: number | string = 0;
+      let bVal: number | string = 0;
+
+      switch (sortField) {
+        case "latestRiskScore":
+          aVal = a.latestRiskScore;
+          bVal = b.latestRiskScore;
+          break;
+        case "name":
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case "avgPpeCompliance":
+          aVal = a.avgPpeCompliance;
+          bVal = b.avgPpeCompliance;
+          break;
+        case "age":
+          aVal = a.age ?? 0;
+          bVal = b.age ?? 0;
+          break;
+        case "yearsExperience":
+          aVal = a.yearsExperience ?? 0;
+          bVal = b.yearsExperience ?? 0;
+          break;
+        case "formsThisWeek":
+          aVal = a.formsThisWeek;
+          bVal = b.formsThisWeek;
+          break;
+      }
+
+      if (typeof aVal === "string") {
+        return sortOrder === "asc" ? aVal.localeCompare(bVal as string) : (bVal as string).localeCompare(aVal);
+      }
+      return sortOrder === "asc" ? aVal - (bVal as number) : (bVal as number) - aVal;
+    });
+
+    return users;
+  }, [data, searchQuery, riskLevelFilter, departmentFilter, ageMinFilter, ageMaxFilter, experienceMinFilter, ppeComplianceFilter, sortField, sortOrder]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setRiskLevelFilter("all");
+    setDepartmentFilter("all");
+    setAgeMinFilter("");
+    setAgeMaxFilter("");
+    setExperienceMinFilter("");
+    setPpeComplianceFilter("all");
+    setSortField("latestRiskScore");
+    setSortOrder("desc");
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -184,7 +353,6 @@ export default function AdminDashboard() {
     complianceRate: 0,
   };
 
-  const users = data?.users ?? [];
   const charts = data?.charts ?? {
     dailyRiskTrend: [],
     riskDistribution: { low: 0, medium: 0, high: 0, critical: 0 },
@@ -456,13 +624,165 @@ export default function AdminDashboard() {
         {/* Workers Table */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              All Workers
-            </CardTitle>
-            <CardDescription>
-              Click on a worker to view their detailed metrics • Sorted by risk score (highest first)
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  All Workers ({filteredUsers.length})
+                </CardTitle>
+                <CardDescription>
+                  Click on a worker to view details and form submissions
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+                {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+              </Button>
+            </div>
+
+            {/* Filters Section */}
+            {showFilters && (
+              <div className="mt-4 p-4 rounded-lg bg-muted/30 border animate-in slide-in-from-top duration-200">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {/* Search */}
+                  <div className="space-y-2">
+                    <Label>Search</Label>
+                    <Input
+                      placeholder="Name, email, job title..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Risk Level Filter */}
+                  <div className="space-y-2">
+                    <Label>Risk Level</Label>
+                    <Select value={riskLevelFilter} onValueChange={setRiskLevelFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Levels</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Department Filter */}
+                  <div className="space-y-2">
+                    <Label>Department</Label>
+                    <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* PPE Compliance Filter */}
+                  <div className="space-y-2">
+                    <Label>PPE Compliance</Label>
+                    <Select value={ppeComplianceFilter} onValueChange={setPpeComplianceFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="high">High (≥80%)</SelectItem>
+                        <SelectItem value="medium">Medium (50-79%)</SelectItem>
+                        <SelectItem value="low">Low (&lt;50%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Age Range */}
+                  <div className="space-y-2">
+                    <Label>Age Range</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={ageMinFilter}
+                        onChange={(e) => setAgeMinFilter(e.target.value)}
+                        className="w-20"
+                      />
+                      <span className="self-center">-</span>
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={ageMaxFilter}
+                        onChange={(e) => setAgeMaxFilter(e.target.value)}
+                        className="w-20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Experience Min */}
+                  <div className="space-y-2">
+                    <Label>Min Experience (years)</Label>
+                    <Input
+                      type="number"
+                      placeholder="Min years"
+                      value={experienceMinFilter}
+                      onChange={(e) => setExperienceMinFilter(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Sort By */}
+                  <div className="space-y-2">
+                    <Label>Sort By</Label>
+                    <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="latestRiskScore">Risk Score</SelectItem>
+                        <SelectItem value="name">Name</SelectItem>
+                        <SelectItem value="avgPpeCompliance">PPE Compliance</SelectItem>
+                        <SelectItem value="age">Age</SelectItem>
+                        <SelectItem value="yearsExperience">Experience</SelectItem>
+                        <SelectItem value="formsThisWeek">Forms This Week</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Sort Order */}
+                  <div className="space-y-2">
+                    <Label>Order</Label>
+                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">High to Low</SelectItem>
+                        <SelectItem value="asc">Low to High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -471,16 +791,16 @@ export default function AdminDashboard() {
                   <tr className="border-b">
                     <th className="text-left py-3 px-2 font-medium">Name</th>
                     <th className="text-left py-3 px-2 font-medium">Department</th>
-                    <th className="text-center py-3 px-2 font-medium">Risk Level</th>
-                    <th className="text-center py-3 px-2 font-medium">Risk Score</th>
+                    <th className="text-center py-3 px-2 font-medium">Risk</th>
+                    <th className="text-center py-3 px-2 font-medium">PPE</th>
                     <th className="text-center py-3 px-2 font-medium">Forms (7d)</th>
                     <th className="text-center py-3 px-2 font-medium">Today</th>
                     <th className="text-center py-3 px-2 font-medium">Incidents</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.length > 0 ? (
-                    users.map((user) => (
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
                       <tr
                         key={user.id}
                         className={`border-b hover:bg-muted/50 cursor-pointer transition-colors ${
@@ -501,11 +821,17 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="py-3 px-2 text-center">
-                          <RiskBadge level={user.riskLevel} size="sm" />
+                          <div className="flex flex-col items-center gap-1">
+                            <RiskBadge level={user.riskLevel} size="sm" />
+                            <span className="text-xs text-muted-foreground">{user.latestRiskScore}</span>
+                          </div>
                         </td>
                         <td className="py-3 px-2 text-center">
-                          <span className="font-semibold text-primary">
-                            {user.latestRiskScore}
+                          <span className={`font-medium ${
+                            user.avgPpeCompliance >= 80 ? "text-emerald-500" :
+                            user.avgPpeCompliance >= 50 ? "text-amber-500" : "text-red-500"
+                          }`}>
+                            {user.avgPpeCompliance}%
                           </span>
                         </td>
                         <td className="py-3 px-2 text-center">{user.formsThisWeek}</td>
@@ -528,7 +854,7 @@ export default function AdminDashboard() {
                   ) : (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                        No workers found
+                        No workers found matching filters
                       </td>
                     </tr>
                   )}
@@ -536,7 +862,7 @@ export default function AdminDashboard() {
               </table>
             </div>
 
-            {/* Selected User Details with Charts */}
+            {/* Selected User Details with Charts and Forms */}
             {selectedUser && (
               <div className="mt-6 p-4 rounded-lg bg-muted/30 border animate-in slide-in-from-top duration-200">
                 <div className="flex items-center justify-between mb-4">
@@ -579,16 +905,144 @@ export default function AdminDashboard() {
                     <p className="font-medium">{selectedUser.avgRisk7d}</p>
                   </div>
                   <div>
+                    <p className="text-sm text-muted-foreground">PPE Compliance</p>
+                    <p className={`font-medium ${
+                      selectedUser.avgPpeCompliance >= 80 ? "text-emerald-500" :
+                      selectedUser.avgPpeCompliance >= 50 ? "text-amber-500" : "text-red-500"
+                    }`}>
+                      {selectedUser.avgPpeCompliance}%
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-sm text-muted-foreground">Total Forms</p>
                     <p className="font-medium">{selectedUser.totalForms}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Incidents</p>
-                    <p className="font-medium">{selectedUser.incidentsReported}</p>
-                  </div>
                 </div>
 
-                {/* Metric Selector */}
+                {/* Form Submissions List */}
+                <div className="mb-6">
+                  <h5 className="font-medium mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Recent Form Submissions
+                  </h5>
+                  {selectedUser.formSubmissions.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedUser.formSubmissions.map((form) => (
+                        <div key={form.id} className="rounded-lg border bg-background">
+                          <div
+                            className="p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
+                            onClick={() => setExpandedFormId(expandedFormId === form.id ? null : form.id)}
+                          >
+                            <div className="flex items-center gap-4">
+                              <span className="font-medium">{formatDate(form.date)}</span>
+                              <RiskBadge 
+                                level={
+                                  form.riskScore <= 30 ? "low" : 
+                                  form.riskScore <= 60 ? "medium" : 
+                                  form.riskScore <= 80 ? "high" : "critical"
+                                } 
+                                size="sm" 
+                              />
+                              <span className="text-sm text-muted-foreground">
+                                Risk: {form.riskScore}
+                              </span>
+                              <span className={`text-sm ${
+                                form.ppeComplianceRate >= 80 ? "text-emerald-500" :
+                                form.ppeComplianceRate >= 50 ? "text-amber-500" : "text-red-500"
+                              }`}>
+                                PPE: {form.ppeComplianceRate}%
+                              </span>
+                              {form.incidentReported && (
+                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                                  Incident
+                                </span>
+                              )}
+                            </div>
+                            {expandedFormId === form.id ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          
+                          {/* Expanded Form Details */}
+                          {expandedFormId === form.id && (
+                            <div className="px-3 pb-3 pt-0 border-t animate-in slide-in-from-top duration-200">
+                              <div className="grid gap-4 md:grid-cols-3 mt-3 text-sm">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-muted-foreground">Shift Duration:</span>
+                                    <span className="font-medium">{form.shiftDuration} hours</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Zap className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-muted-foreground">Fatigue Level:</span>
+                                    <span className="font-medium">{form.fatigueLevel}/10</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-muted-foreground">Hazard Hours:</span>
+                                    <span className="font-medium">{form.totalHazardExposureHours.toFixed(1)}h</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <HardHat className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-muted-foreground">PPE Used:</span>
+                                    <span className="font-medium">{form.ppeItemsUsed}/{form.ppeItemsRequired}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Hazards:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {Object.entries(form.hazardExposures).map(([hazard, hours]) => (
+                                        <span 
+                                          key={hazard} 
+                                          className="text-xs bg-muted px-2 py-0.5 rounded"
+                                        >
+                                          {hazard} ({hours}h)
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  {form.symptoms && (form.symptoms as string[]).length > 0 && (
+                                    <div>
+                                      <span className="text-muted-foreground">Symptoms:</span>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {(form.symptoms as string[]).map((symptom) => (
+                                          <span 
+                                            key={symptom} 
+                                            className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded"
+                                          >
+                                            {symptom}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {form.incidentReported && form.incidentDescription && (
+                                    <div>
+                                      <span className="text-muted-foreground">Incident:</span>
+                                      <p className="text-xs mt-1 p-2 bg-red-50 text-red-700 rounded">
+                                        {form.incidentDescription}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No form submissions yet</p>
+                  )}
+                </div>
+
+                {/* Metric Selector for Charts */}
                 {userDetailData && (
                   <>
                     <div className="mb-4">

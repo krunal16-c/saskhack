@@ -155,6 +155,28 @@ export async function GET() {
         : false;
 
       const latestRiskScore = latestForm?.riskScore ?? 0;
+      
+      // Calculate PPE compliance average
+      const avgPpeCompliance = recentForms.length > 0
+        ? Math.round((recentForms.reduce((sum, f) => sum + f.ppeComplianceRate, 0) / recentForms.length) * 100)
+        : 0;
+
+      // Format forms for display
+      const formSubmissions = user.dailyForms.slice(0, 10).map((form) => ({
+        id: form.id,
+        date: form.date.toISOString(),
+        shiftDuration: form.shiftDuration,
+        fatigueLevel: form.fatigueLevel,
+        riskScore: Math.round(form.riskScore),
+        ppeComplianceRate: Math.round(form.ppeComplianceRate * 100),
+        ppeItemsUsed: form.ppeItemsUsed,
+        ppeItemsRequired: form.ppeItemsRequired,
+        totalHazardExposureHours: form.totalHazardExposureHours,
+        hazardExposures: form.hazardExposures,
+        symptoms: form.symptoms,
+        incidentReported: form.incidentReported,
+        incidentDescription: form.incidentDescription,
+      }));
 
       return {
         id: user.id,
@@ -164,17 +186,18 @@ export async function GET() {
         age: user.age,
         gender: user.gender,
         yearsExperience: user.yearsExperience,
-        jobType: user.jobType,
         jobTitle: user.jobTitle,
         department: user.department,
         formsThisWeek: recentForms.length,
         avgRisk7d: Math.round(avgRisk),
         latestRiskScore: Math.round(latestRiskScore),
+        avgPpeCompliance,
         hasSubmittedToday,
         totalForms: user.dailyForms.length,
         incidentsReported: user.dailyForms.filter((f) => f.incidentReported).length,
         riskLevel:
           latestRiskScore <= 30 ? "low" : latestRiskScore <= 60 ? "medium" : latestRiskScore <= 80 ? "high" : "critical",
+        formSubmissions,
       };
     });
 
